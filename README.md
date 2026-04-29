@@ -108,6 +108,7 @@ The examples are intentionally made from public-domain texts, so the repository 
 | Source | Rendered PDF preview |
 | --- | --- |
 | [`Examples/basic.md`](Examples/basic.md) | <img src="Assets/screenshots/basic.png" width="220" alt="Basic example preview"> |
+| [`Examples/markdown-features.md`](Examples/markdown-features.md) | <img src="Assets/screenshots/markdown-features.png" width="220" alt="Markdown features preview"> |
 | [`Examples/technical-note.md`](Examples/technical-note.md) | <img src="Assets/screenshots/technical-note.png" width="220" alt="Technical note preview"> |
 | [`Examples/moby-dick-loomings.md`](Examples/moby-dick-loomings.md) | <img src="Assets/screenshots/moby-dick-loomings.png" width="220" alt="Moby-Dick preview"> |
 | [`Examples/shakespeare-sonnet-18.md`](Examples/shakespeare-sonnet-18.md) | <img src="Assets/screenshots/shakespeare-sonnet-18.png" width="220" alt="Shakespeare Sonnet 18 preview"> |
@@ -130,16 +131,20 @@ Scripts/render-gallery.sh --update-screenshots
 
 ## Markdown Support
 
-Kuma currently supports the small subset needed for calm documents:
+Kuma currently supports the practical Markdown subset needed for calm documents:
 
 - `#` through `######` headings
 - paragraphs
-- unordered lists with `-` or `*`
+- bold, italic, inline code, links, raw URLs, and emails
+- blockquotes
+- unordered, ordered, nested, and task lists
+- simple tables
+- horizontal rules
 - local images with `![caption](path/to/image.png)`
 - fenced code blocks
-- automatic accent coloring for emails and `http` or `https` URLs
+- frontmatter blocks, which are ignored
 
-Unsupported Markdown is treated as plain text. That keeps the renderer predictable while the project is still small.
+Specialized extensions such as math, Mermaid diagrams, and raw HTML are intentionally outside the native renderer for now.
 
 ## Development
 

@@ -22,8 +22,11 @@ let captionColor = CGColor(gray: 0.35, alpha: 1)
 let codeTextColor = CGColor(red: 0.12, green: 0.11, blue: 0.10, alpha: 1)
 let codeBackgroundColor = CGColor(red: 0.965, green: 0.955, blue: 0.935, alpha: 1)
 let codeBorderColor = CGColor(red: 0.88, green: 0.86, blue: 0.82, alpha: 1)
+let tableHeaderColor = CGColor(red: 0.975, green: 0.968, blue: 0.948, alpha: 1)
+let tableLineColor = CGColor(red: 0.82, green: 0.80, blue: 0.76, alpha: 1)
+let kumaStrikethroughAttribute = NSAttributedString.Key("KumaStrikethrough")
 let appName = "Kuma"
-let appVersion = "0.8.0"
+let appVersion = "0.9.0"
 let defaultBodyFontName = "AvenirNext-Regular"
 let defaultHeadingFontName = "AvenirNext-DemiBold"
 let defaultCodeFontName = "Menlo-Regular"
@@ -90,15 +93,49 @@ struct FileSignature: Equatable {
     let size: Int?
 }
 
+enum ListMarker {
+    case unordered
+    case ordered(Int)
+    case task(Bool)
+}
+
+struct TableBlock {
+    let headers: [String]
+    let rows: [[String]]
+}
+
+struct InlineStyle {
+    var bold = false
+    var italic = false
+    var code = false
+    var link = false
+    var strikethrough = false
+}
+
+struct InlineRun {
+    let text: String
+    let style: InlineStyle
+}
+
 enum Block {
     case heading(level: Int, text: String)
     case paragraph(String)
-    case bullet(String)
+    case listItem(marker: ListMarker, level: Int, text: String)
     case image(alt: String, path: String)
     case code(language: String?, text: String)
+    case blockquote(String)
+    case horizontalRule
+    case table(TableBlock)
 
     var isHeading: Bool {
         if case .heading = self {
+            return true
+        }
+        return false
+    }
+
+    var isListItem: Bool {
+        if case .listItem = self {
             return true
         }
         return false
@@ -138,6 +175,38 @@ struct Renderer {
     func drawLine(_ line: CTLine, x: CGFloat, baselineY: CGFloat) {
         context.textPosition = CGPoint(x: x, y: pageHeight - baselineY)
         CTLineDraw(line, context)
+        drawStrikethroughs(line, x: x, baselineY: baselineY)
+    }
+
+    func drawStrikethroughs(_ line: CTLine, x: CGFloat, baselineY: CGFloat) {
+        let runs = CTLineGetGlyphRuns(line) as NSArray
+        let baseline = pageHeight - baselineY
+
+        context.saveGState()
+        context.setLineWidth(0.55)
+
+        for case let run as CTRun in runs {
+            let attributes = CTRunGetAttributes(run) as NSDictionary
+            guard attributes[kumaStrikethroughAttribute] != nil else {
+                continue
+            }
+
+            let range = CTRunGetStringRange(run)
+            let runX = x + CTLineGetOffsetForStringIndex(line, range.location, nil)
+            let width = CGFloat(CTRunGetTypographicBounds(run, CFRange(location: 0, length: 0), nil, nil, nil))
+            let colorValue = attributes[kCTForegroundColorAttributeName as NSAttributedString.Key]
+            let fontValue = attributes[kCTFontAttributeName as NSAttributedString.Key]
+            let color = colorValue == nil ? blackColor : colorValue as! CGColor
+            let font = fontValue == nil ? bodyFont : fontValue as! CTFont
+            let strikeY = baseline + (CTFontGetXHeight(font) * 0.45)
+
+            context.setStrokeColor(color)
+            context.move(to: CGPoint(x: runX, y: strikeY))
+            context.addLine(to: CGPoint(x: runX + width, y: strikeY))
+            context.strokePath()
+        }
+
+        context.restoreGState()
     }
 
     func fillRect(x: CGFloat, topY: CGFloat, width: CGFloat, height: CGFloat, color: CGColor) {
@@ -164,7 +233,7 @@ struct Renderer {
         while start < length {
             while start < length {
                 let char = string.character(at: start)
-                if char == 32 || char == 10 || char == 9 {
+                if char == 32 || char == 9 {
                     start += 1
                 } else {
                     break
@@ -172,16 +241,82 @@ struct Renderer {
             }
             if start >= length { break }
 
+            if string.character(at: start) == 10 {
+                y += lineHeight
+                start += 1
+                continue
+            }
+
             if y > maxBaselineY {
                 newPage()
             }
 
-            let count = CTTypesetterSuggestLineBreak(typesetter, start, Double(width))
-            let line = CTTypesetterCreateLine(typesetter, CFRange(location: start, length: count))
-            drawLine(line, x: x, baselineY: y)
+            var count = CTTypesetterSuggestLineBreak(typesetter, start, Double(width))
+            var consumesNewline = false
+            let remainingRange = NSRange(location: start, length: length - start)
+            let newlineRange = string.range(of: "\n", options: [], range: remainingRange)
+            if newlineRange.location != NSNotFound && newlineRange.location < start + count {
+                count = newlineRange.location - start
+                consumesNewline = true
+            }
+
+            if count > 0 {
+                let line = CTTypesetterCreateLine(typesetter, CFRange(location: start, length: count))
+                drawLine(line, x: x, baselineY: y)
+            }
             y += lineHeight
             start += count
+            if consumesNewline {
+                start += 1
+            }
         }
+    }
+
+    func wrappedLineRanges(_ attributed: NSAttributedString, width: CGFloat) -> [CFRange] {
+        let typesetter = CTTypesetterCreateWithAttributedString(attributed)
+        let string = attributed.string as NSString
+        var ranges: [CFRange] = []
+        var start = 0
+        let length = attributed.length
+
+        while start < length {
+            while start < length {
+                let char = string.character(at: start)
+                if char == 32 || char == 9 {
+                    start += 1
+                } else {
+                    break
+                }
+            }
+            if start >= length { break }
+
+            if string.character(at: start) == 10 {
+                ranges.append(CFRange(location: start, length: 0))
+                start += 1
+                continue
+            }
+
+            var count = CTTypesetterSuggestLineBreak(typesetter, start, Double(width))
+            var consumesNewline = false
+            let remainingRange = NSRange(location: start, length: length - start)
+            let newlineRange = string.range(of: "\n", options: [], range: remainingRange)
+            if newlineRange.location != NSNotFound && newlineRange.location < start + count {
+                count = newlineRange.location - start
+                consumesNewline = true
+            }
+
+            ranges.append(CFRange(location: start, length: count))
+            start += count
+            if consumesNewline {
+                start += 1
+            }
+        }
+
+        return ranges.isEmpty ? [CFRange(location: 0, length: 0)] : ranges
+    }
+
+    func measuredLineCount(_ attributed: NSAttributedString, width: CGFloat) -> Int {
+        wrappedLineRanges(attributed, width: width).count
     }
 
     mutating func drawHeading(level: Int, text: String, previous: Block?) {
@@ -232,9 +367,11 @@ struct Renderer {
         drawWrapped(attr, x: leftX, width: bodyWidth, lineHeight: bodyLineHeight)
     }
 
-    mutating func drawBullet(_ text: String, previous: Block?) {
+    mutating func drawListItem(marker: ListMarker, level: Int, text: String, previous: Block?) {
         if case .paragraph = previous {
             y += 20
+        } else if let previous, !previous.isListItem && !previous.isHeading {
+            y += 8
         }
 
         let attr = makeInlineAttributed(text)
@@ -260,25 +397,86 @@ struct Renderer {
             }
 
             if firstLine {
-                drawBulletDot(baselineY: y)
+                drawListMarker(marker, level: level, baselineY: y)
                 firstLine = false
             }
 
-            let count = CTTypesetterSuggestLineBreak(typesetter, start, Double(bulletWidth))
+            let textX = listTextX(level: level)
+            let width = listWidth(level: level)
+            let count = CTTypesetterSuggestLineBreak(typesetter, start, Double(width))
             let line = CTTypesetterCreateLine(typesetter, CFRange(location: start, length: count))
-            drawLine(line, x: bulletTextX, baselineY: y)
+            drawLine(line, x: textX, baselineY: y)
             y += bodyLineHeight
             start += count
         }
     }
 
-    func drawBulletDot(baselineY: CGFloat) {
+    func listTextX(level: Int) -> CGFloat {
+        bulletTextX + (CGFloat(max(0, level)) * 18)
+    }
+
+    func listMarkerX(level: Int) -> CGFloat {
+        bulletDotX + (CGFloat(max(0, level)) * 18)
+    }
+
+    func listWidth(level: Int) -> CGFloat {
+        max(120, bodyWidth - (listTextX(level: level) - leftX))
+    }
+
+    func drawListMarker(_ marker: ListMarker, level: Int, baselineY: CGFloat) {
+        switch marker {
+        case .unordered:
+            drawBulletDot(level: level, baselineY: baselineY)
+        case .ordered(let number):
+            drawOrderedMarker(number: number, level: level, baselineY: baselineY)
+        case .task(let checked):
+            drawTaskMarker(checked: checked, level: level, baselineY: baselineY)
+        }
+    }
+
+    func drawBulletDot(level: Int, baselineY: CGFloat) {
         context.saveGState()
         context.setFillColor(accentColor)
         let radius: CGFloat = 2.45
         let centerY = baselineY - (CTFontGetCapHeight(bodyFont) / 2)
-        let center = CGPoint(x: bulletDotX, y: pageHeight - centerY)
+        let center = CGPoint(x: listMarkerX(level: level), y: pageHeight - centerY)
         context.fillEllipse(in: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2))
+        context.restoreGState()
+    }
+
+    func drawOrderedMarker(number: Int, level: Int, baselineY: CGFloat) {
+        let markerFont = CTFontCreateCopyWithAttributes(bodyFont, 9.5, nil, nil)
+        let attributed = NSAttributedString(string: "\(number).", attributes: [
+            kCTFontAttributeName as NSAttributedString.Key: markerFont,
+            kCTForegroundColorAttributeName as NSAttributedString.Key: accentColor
+        ])
+        let line = CTLineCreateWithAttributedString(attributed)
+        let markerWidth = CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
+        drawLine(line, x: listTextX(level: level) - markerWidth - 8, baselineY: baselineY)
+    }
+
+    func drawTaskMarker(checked: Bool, level: Int, baselineY: CGFloat) {
+        let size: CGFloat = 7
+        let centerY = baselineY - (CTFontGetCapHeight(bodyFont) / 2)
+        let rect = CGRect(
+            x: listTextX(level: level) - 18,
+            y: pageHeight - centerY - (size / 2),
+            width: size,
+            height: size
+        )
+
+        context.saveGState()
+        context.setStrokeColor(accentColor)
+        context.setLineWidth(0.9)
+        context.stroke(rect)
+        if checked {
+            context.setStrokeColor(accentColor)
+            context.setLineWidth(1.1)
+            context.move(to: CGPoint(x: rect.minX + 1.4, y: rect.midY))
+            context.addLine(to: CGPoint(x: rect.minX + 3, y: rect.minY + 1.6))
+            context.addLine(to: CGPoint(x: rect.maxX - 1, y: rect.maxY - 1.4))
+            context.strokePath()
+        }
         context.restoreGState()
     }
 
@@ -362,6 +560,126 @@ struct Renderer {
         }
     }
 
+    mutating func drawBlockquote(_ text: String, previous: Block?) {
+        if let previous, !previous.isHeading {
+            y += 13
+        }
+
+        let attr = makeInlineAttributed(text, baseColor: captionColor)
+        let quoteX = leftX + 15
+        let quoteWidth = bodyWidth - 18
+        let lineCount = measuredLineCount(attr, width: quoteWidth)
+        let quoteHeight = CGFloat(lineCount) * bodyLineHeight + 4
+
+        if y + quoteHeight > maxBaselineY {
+            newPage()
+        }
+
+        context.saveGState()
+        context.setStrokeColor(accentColor)
+        context.setLineWidth(1.4)
+        let lineX = leftX + 3
+        let topY = y - 4
+        context.move(to: CGPoint(x: lineX, y: pageHeight - topY))
+        context.addLine(to: CGPoint(x: lineX, y: pageHeight - (topY + quoteHeight)))
+        context.strokePath()
+        context.restoreGState()
+
+        drawWrapped(attr, x: quoteX, width: quoteWidth, lineHeight: bodyLineHeight)
+        y += 8
+    }
+
+    mutating func drawHorizontalRule(previous: Block?) {
+        if let previous, !previous.isHeading {
+            y += 12
+        }
+        if y > maxBaselineY - 24 {
+            newPage()
+        }
+
+        context.saveGState()
+        context.setStrokeColor(tableLineColor)
+        context.setLineWidth(0.8)
+        context.move(to: CGPoint(x: leftX, y: pageHeight - y))
+        context.addLine(to: CGPoint(x: leftX + bodyWidth, y: pageHeight - y))
+        context.strokePath()
+        context.restoreGState()
+
+        y += 24
+    }
+
+    mutating func drawTable(_ table: TableBlock, previous: Block?) {
+        if let previous, !previous.isHeading {
+            y += 15
+        }
+
+        let rows = [table.headers] + table.rows
+        let columnCount = max(1, rows.map(\.count).max() ?? 1)
+        let columnWidth = bodyWidth / CGFloat(columnCount)
+        let padding: CGFloat = 5
+        let tableLineHeight: CGFloat = 13
+        let headerFont = CTFontCreateCopyWithAttributes(headingFont, 9.5, nil, nil)
+
+        for (rowIndex, row) in rows.enumerated() {
+            var cellRanges: [[CFRange]] = []
+            var cellAttributed: [NSAttributedString] = []
+            var maxLines = 1
+
+            for column in 0..<columnCount {
+                let value = column < row.count ? row[column] : ""
+                let attr = rowIndex == 0
+                    ? makeInlineAttributed(value, baseFont: headerFont)
+                    : makeInlineAttributed(value)
+                let ranges = wrappedLineRanges(attr, width: columnWidth - (padding * 2))
+                maxLines = max(maxLines, ranges.count)
+                cellAttributed.append(attr)
+                cellRanges.append(ranges)
+            }
+
+            let rowHeight = max(CGFloat(maxLines) * tableLineHeight + (padding * 2), rowIndex == 0 ? 24 : 22)
+            if y + rowHeight > maxBaselineY {
+                newPage()
+            }
+
+            if rowIndex == 0 {
+                fillRect(x: leftX, topY: y, width: bodyWidth, height: rowHeight, color: tableHeaderColor)
+            }
+
+            context.saveGState()
+            context.setStrokeColor(tableLineColor)
+            context.setLineWidth(0.55)
+            let top = pageHeight - y
+            let bottom = pageHeight - (y + rowHeight)
+            context.move(to: CGPoint(x: leftX, y: top))
+            context.addLine(to: CGPoint(x: leftX + bodyWidth, y: top))
+            context.move(to: CGPoint(x: leftX, y: bottom))
+            context.addLine(to: CGPoint(x: leftX + bodyWidth, y: bottom))
+            for column in 0...columnCount {
+                let x = leftX + (CGFloat(column) * columnWidth)
+                context.move(to: CGPoint(x: x, y: top))
+                context.addLine(to: CGPoint(x: x, y: bottom))
+            }
+            context.strokePath()
+            context.restoreGState()
+
+            for column in 0..<columnCount {
+                let attr = cellAttributed[column]
+                let ranges = cellRanges[column]
+                var baseline = y + padding + 10
+                let x = leftX + (CGFloat(column) * columnWidth) + padding
+                for range in ranges where range.length > 0 {
+                    let line = CTLineCreateWithAttributedString(attr.attributedSubstring(from: NSRange(location: range.location, length: range.length)))
+                    drawLine(line, x: x, baselineY: baseline)
+                    baseline += tableLineHeight
+                }
+            }
+
+            y += rowHeight
+        }
+
+        y += 16
+    }
+
     func makeCodeLines(_ text: String, width: CGFloat) -> [CTLine] {
         let rawLines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         var lines: [CTLine] = []
@@ -404,20 +722,21 @@ struct Renderer {
         return inputDirectory.appendingPathComponent(cleanPath).standardizedFileURL
     }
 
-    func makeInlineAttributed(_ text: String) -> NSMutableAttributedString {
-        let result = NSMutableAttributedString(string: text, attributes: [
-            kCTFontAttributeName as NSAttributedString.Key: bodyFont,
-            kCTForegroundColorAttributeName as NSAttributedString.Key: blackColor
-        ])
+    func makeInlineAttributed(_ text: String, baseColor: CGColor = blackColor, baseFont: CTFont? = nil) -> NSMutableAttributedString {
+        let selectedBaseFont = baseFont ?? bodyFont
+        let result = NSMutableAttributedString()
+        for run in parseInlineRuns(text) {
+            result.append(NSAttributedString(string: run.text, attributes: inlineAttributes(for: run.style, baseColor: baseColor, baseFont: selectedBaseFont)))
+        }
 
-        let nsText = text as NSString
+        let nsText = result.string as NSString
         let patterns = [
             #"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"#,
             #"https?://[^\s]+"#
         ]
         for pattern in patterns {
             if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) {
-                let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
+                let matches = regex.matches(in: result.string, range: NSRange(location: 0, length: nsText.length))
                 for match in matches {
                     result.addAttribute(kCTForegroundColorAttributeName as NSAttributedString.Key, value: accentColor, range: match.range)
                 }
@@ -425,6 +744,199 @@ struct Renderer {
         }
         return result
     }
+
+    func inlineAttributes(for style: InlineStyle, baseColor: CGColor, baseFont: CTFont) -> [NSAttributedString.Key: Any] {
+        let size = CTFontGetSize(baseFont)
+        let selectedFont: CTFont
+        if style.code {
+            selectedFont = CTFontCreateCopyWithAttributes(codeFont, size - 0.5, nil, nil)
+        } else if style.bold && style.italic {
+            selectedFont = font(named: "AvenirNext-DemiBoldItalic", size: size)
+        } else if style.bold {
+            selectedFont = font(named: "AvenirNext-DemiBold", size: size)
+        } else if style.italic {
+            selectedFont = font(named: "AvenirNext-Italic", size: size)
+        } else {
+            selectedFont = baseFont
+        }
+
+        var attributes: [NSAttributedString.Key: Any] = [
+            kCTFontAttributeName as NSAttributedString.Key: selectedFont,
+            kCTForegroundColorAttributeName as NSAttributedString.Key: style.link ? accentColor : (style.code ? codeTextColor : baseColor)
+        ]
+
+        if style.strikethrough {
+            attributes[kumaStrikethroughAttribute] = true
+        }
+
+        return attributes
+    }
+}
+
+func parseInlineRuns(_ text: String, style: InlineStyle = InlineStyle()) -> [InlineRun] {
+    var runs: [InlineRun] = []
+    var literal = ""
+    var index = text.startIndex
+
+    func flushLiteral() {
+        if !literal.isEmpty {
+            runs.append(InlineRun(text: literal, style: style))
+            literal.removeAll()
+        }
+    }
+
+    func indexAfter(_ marker: String, from position: String.Index) -> String.Index {
+        text.index(position, offsetBy: marker.count)
+    }
+
+    func closingRange(for marker: String, after position: String.Index) -> Range<String.Index>? {
+        text.range(of: marker, range: position..<text.endIndex)
+    }
+
+    while index < text.endIndex {
+        let next = text.index(after: index)
+
+        if text[index] == "\\" {
+            if next < text.endIndex {
+                literal.append(text[next])
+                index = text.index(after: next)
+            } else {
+                literal.append(text[index])
+                index = next
+            }
+            continue
+        }
+
+        if text[index...].hasPrefix("`"), let close = closingRange(for: "`", after: next) {
+            flushLiteral()
+            var codeStyle = style
+            codeStyle.code = true
+            runs.append(InlineRun(text: String(text[next..<close.lowerBound]), style: codeStyle))
+            index = close.upperBound
+            continue
+        }
+
+        if text[index...].hasPrefix("["),
+           let closeBracket = closingRange(for: "]", after: next),
+           closeBracket.upperBound < text.endIndex,
+           text[closeBracket.upperBound] == "(" {
+            let destinationStart = text.index(after: closeBracket.upperBound)
+            if let closeParen = closingRange(for: ")", after: destinationStart) {
+                flushLiteral()
+                var linkStyle = style
+                linkStyle.link = true
+                runs.append(contentsOf: parseInlineRuns(String(text[next..<closeBracket.lowerBound]), style: linkStyle))
+                index = closeParen.upperBound
+                continue
+            }
+        }
+
+        if text[index...].hasPrefix("<"), let close = closingRange(for: ">", after: next) {
+            let content = String(text[next..<close.lowerBound])
+            if isAutolink(content) {
+                flushLiteral()
+                var linkStyle = style
+                linkStyle.link = true
+                runs.append(InlineRun(text: content, style: linkStyle))
+                index = close.upperBound
+                continue
+            }
+        }
+
+        if text[index...].hasPrefix("***") {
+            let contentStart = indexAfter("***", from: index)
+            if let close = closingRange(for: "***", after: contentStart) {
+                flushLiteral()
+                var emphasisStyle = style
+                emphasisStyle.bold = true
+                emphasisStyle.italic = true
+                runs.append(contentsOf: parseInlineRuns(String(text[contentStart..<close.lowerBound]), style: emphasisStyle))
+                index = close.upperBound
+                continue
+            }
+        }
+
+        if text[index...].hasPrefix("___") {
+            let contentStart = indexAfter("___", from: index)
+            if let close = closingRange(for: "___", after: contentStart) {
+                flushLiteral()
+                var emphasisStyle = style
+                emphasisStyle.bold = true
+                emphasisStyle.italic = true
+                runs.append(contentsOf: parseInlineRuns(String(text[contentStart..<close.lowerBound]), style: emphasisStyle))
+                index = close.upperBound
+                continue
+            }
+        }
+
+        if text[index...].hasPrefix("**") {
+            let contentStart = indexAfter("**", from: index)
+            if let close = closingRange(for: "**", after: contentStart) {
+                flushLiteral()
+                var boldStyle = style
+                boldStyle.bold = true
+                runs.append(contentsOf: parseInlineRuns(String(text[contentStart..<close.lowerBound]), style: boldStyle))
+                index = close.upperBound
+                continue
+            }
+        }
+
+        if text[index...].hasPrefix("__") {
+            let contentStart = indexAfter("__", from: index)
+            if let close = closingRange(for: "__", after: contentStart) {
+                flushLiteral()
+                var boldStyle = style
+                boldStyle.bold = true
+                runs.append(contentsOf: parseInlineRuns(String(text[contentStart..<close.lowerBound]), style: boldStyle))
+                index = close.upperBound
+                continue
+            }
+        }
+
+        if text[index...].hasPrefix("~~") {
+            let contentStart = indexAfter("~~", from: index)
+            if let close = closingRange(for: "~~", after: contentStart) {
+                flushLiteral()
+                var strikeStyle = style
+                strikeStyle.strikethrough = true
+                runs.append(contentsOf: parseInlineRuns(String(text[contentStart..<close.lowerBound]), style: strikeStyle))
+                index = close.upperBound
+                continue
+            }
+        }
+
+        if text[index] == "*" {
+            if let close = closingRange(for: "*", after: next), close.lowerBound > next {
+                flushLiteral()
+                var italicStyle = style
+                italicStyle.italic = true
+                runs.append(contentsOf: parseInlineRuns(String(text[next..<close.lowerBound]), style: italicStyle))
+                index = close.upperBound
+                continue
+            }
+        }
+
+        if text[index] == "_" {
+            if let close = closingRange(for: "_", after: next), close.lowerBound > next {
+                flushLiteral()
+                var italicStyle = style
+                italicStyle.italic = true
+                runs.append(contentsOf: parseInlineRuns(String(text[next..<close.lowerBound]), style: italicStyle))
+                index = close.upperBound
+                continue
+            }
+        }
+
+        literal.append(text[index])
+        index = next
+    }
+
+    flushLiteral()
+    return runs
+}
+
+func isAutolink(_ text: String) -> Bool {
+    text.range(of: #"^(https?://[^\s]+|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})$"#, options: [.regularExpression, .caseInsensitive]) != nil
 }
 
 func printUsage(to stream: UnsafeMutablePointer<FILE>) {
@@ -667,14 +1179,15 @@ func watch(_ options: RenderOptions) -> Never {
 let starterMarkdown = """
 # Kuma Example
 
-Write plain Markdown and render it into a quiet native PDF.
+Write **plain Markdown** and render it into a quiet native PDF.
 
 ## Notes
 
 - Keep sections short.
-- Use simple headings.
+- Use simple headings and `inline code`.
 - Add links such as https://github.com/subirats345/kuma.
 - Add emails such as hello@example.com.
+- Track tasks with `- [ ]` and `- [x]`.
 
 ## Code
 
@@ -809,63 +1322,116 @@ func parseMarkdown(_ markdown: String) -> [Block] {
     var blocks: [Block] = []
     var paragraph: [String] = []
     var codeLanguage: String?
+    var codeFence: String?
     var codeLines: [String] = []
+    let lines = markdown
+        .replacingOccurrences(of: "\r\n", with: "\n")
+        .replacingOccurrences(of: "\r", with: "\n")
+        .split(separator: "\n", omittingEmptySubsequences: false)
+        .map(String.init)
+    var index = 0
 
     func flushParagraph() {
         if !paragraph.isEmpty {
-            blocks.append(.paragraph(paragraph.joined(separator: " ")))
+            blocks.append(.paragraph(joinParagraph(paragraph)))
             paragraph.removeAll()
         }
     }
 
-    for raw in markdown.replacingOccurrences(of: "\r\n", with: "\n").split(separator: "\n", omittingEmptySubsequences: false) {
-        let line = String(raw)
+    if lines.first?.trimmingCharacters(in: .whitespaces) == "---" {
+        var frontmatterEnd: Int?
+        var cursor = 1
+        while cursor < lines.count {
+            if lines[cursor].trimmingCharacters(in: .whitespaces) == "---" {
+                frontmatterEnd = cursor
+                break
+            }
+            cursor += 1
+        }
+        if let frontmatterEnd {
+            index = frontmatterEnd + 1
+        }
+    }
+
+    while index < lines.count {
+        let line = lines[index]
         let trimmed = line.trimmingCharacters(in: .whitespaces)
 
         if codeLanguage != nil {
-            if trimmed.hasPrefix("```") {
+            if let fence = codeFence, trimmed.hasPrefix(fence) {
                 blocks.append(.code(language: codeLanguage, text: codeLines.joined(separator: "\n")))
                 codeLanguage = nil
+                codeFence = nil
                 codeLines.removeAll()
             } else {
                 codeLines.append(line)
             }
+            index += 1
             continue
         }
 
         if trimmed.isEmpty {
             flushParagraph()
+            index += 1
             continue
         }
 
-        if let match = trimmed.oneCapture(#"^```\s*([A-Za-z0-9_+.-]*)\s*$"#) {
+        if let match = trimmed.twoCaptures(#"^(```+|~~~+)\s*([A-Za-z0-9_+.-]*)\s*$"#) {
             flushParagraph()
-            codeLanguage = match.isEmpty ? nil : match
-            if codeLanguage == nil {
-                codeLanguage = ""
+            codeFence = match.0
+            codeLanguage = match.1
+            index += 1
+            continue
+        }
+
+        if let quote = blockquoteContent(line) {
+            flushParagraph()
+            var quoteLines: [String] = []
+            while index < lines.count, let content = blockquoteContent(lines[index]) {
+                quoteLines.append(content)
+                index += 1
             }
+            blocks.append(.blockquote(joinParagraph(quoteLines.isEmpty ? [quote] : quoteLines)))
+            continue
+        }
+
+        if let table = parseTable(lines: lines, startingAt: index) {
+            flushParagraph()
+            blocks.append(.table(table.block))
+            index = table.nextIndex
+            continue
+        }
+
+        if isHorizontalRule(trimmed) {
+            flushParagraph()
+            blocks.append(.horizontalRule)
+            index += 1
             continue
         }
 
         if let match = trimmed.twoCaptures(#"^(#{1,6})\s+(.+)$"#) {
             flushParagraph()
             blocks.append(.heading(level: match.0.count, text: match.1))
+            index += 1
             continue
         }
 
         if let match = trimmed.twoCaptures(#"^!\[([^\]]*)\]\(([^)]+)\)\s*$"#) {
             flushParagraph()
             blocks.append(.image(alt: match.0, path: match.1))
+            index += 1
             continue
         }
 
-        if let match = trimmed.oneCapture(#"^[-*]\s+(.+)$"#) {
+        if let listItem = parseListItem(line) {
             flushParagraph()
-            blocks.append(.bullet(match))
+            blocks.append(.listItem(marker: listItem.marker, level: listItem.level, text: listItem.text))
+            index += 1
             continue
         }
 
-        paragraph.append(trimmed)
+        paragraph.append(normalizedParagraphLine(line))
+        index += 1
     }
 
     flushParagraph()
@@ -873,6 +1439,129 @@ func parseMarkdown(_ markdown: String) -> [Block] {
         blocks.append(.code(language: codeLanguage, text: codeLines.joined(separator: "\n")))
     }
     return blocks
+}
+
+func normalizedParagraphLine(_ line: String) -> String {
+    let trimmed = line.trimmingCharacters(in: .whitespaces)
+    if line.hasSuffix("  ") {
+        return trimmed + "\n"
+    }
+    if trimmed.hasSuffix("\\") {
+        return String(trimmed.dropLast()) + "\n"
+    }
+    return trimmed
+}
+
+func joinParagraph(_ lines: [String]) -> String {
+    var result = ""
+    for line in lines {
+        if result.isEmpty {
+            result = line
+        } else if result.hasSuffix("\n") {
+            result += line
+        } else if line == "\n" {
+            result += "\n"
+        } else {
+            result += " " + line
+        }
+    }
+    return result
+}
+
+func blockquoteContent(_ line: String) -> String? {
+    let trimmed = line.trimmingCharacters(in: .whitespaces)
+    guard trimmed.hasPrefix(">") else { return nil }
+    var content = String(trimmed.dropFirst())
+    if content.hasPrefix(" ") {
+        content.removeFirst()
+    }
+    return normalizedParagraphLine(content)
+}
+
+func isHorizontalRule(_ trimmed: String) -> Bool {
+    let compact = trimmed.replacingOccurrences(of: " ", with: "")
+    guard compact.count >= 3, let first = compact.first, ["-", "*", "_"].contains(first) else {
+        return false
+    }
+    return compact.allSatisfy { $0 == first }
+}
+
+func parseListItem(_ line: String) -> (marker: ListMarker, level: Int, text: String)? {
+    let indent = leadingIndentWidth(line)
+    let level = min(5, indent / 2)
+    let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+    if let match = trimmed.twoCaptures(#"^[-*+]\s+\[([ xX])\]\s+(.+)$"#) {
+        return (.task(match.0.lowercased() == "x"), level, match.1)
+    }
+
+    if let match = trimmed.twoCaptures(#"^(\d+)[.)]\s+(.+)$"#), let number = Int(match.0) {
+        return (.ordered(number), level, match.1)
+    }
+
+    if let match = trimmed.oneCapture(#"^[-*+]\s+(.+)$"#) {
+        return (.unordered, level, match)
+    }
+
+    return nil
+}
+
+func leadingIndentWidth(_ line: String) -> Int {
+    var width = 0
+    for char in line {
+        if char == " " {
+            width += 1
+        } else if char == "\t" {
+            width += 4
+        } else {
+            break
+        }
+    }
+    return width
+}
+
+func parseTable(lines: [String], startingAt index: Int) -> (block: TableBlock, nextIndex: Int)? {
+    guard index + 1 < lines.count else { return nil }
+    let headerLine = lines[index].trimmingCharacters(in: .whitespaces)
+    let separatorLine = lines[index + 1].trimmingCharacters(in: .whitespaces)
+    guard headerLine.contains("|"), isTableSeparator(separatorLine) else { return nil }
+
+    let headers = parseTableRow(headerLine)
+    guard !headers.isEmpty else { return nil }
+
+    var rows: [[String]] = []
+    var nextIndex = index + 2
+    while nextIndex < lines.count {
+        let line = lines[nextIndex].trimmingCharacters(in: .whitespaces)
+        if line.isEmpty || !line.contains("|") {
+            break
+        }
+        rows.append(parseTableRow(line))
+        nextIndex += 1
+    }
+
+    return (TableBlock(headers: headers, rows: rows), nextIndex)
+}
+
+func parseTableRow(_ line: String) -> [String] {
+    var value = line.trimmingCharacters(in: .whitespaces)
+    if value.hasPrefix("|") {
+        value.removeFirst()
+    }
+    if value.hasSuffix("|") {
+        value.removeLast()
+    }
+    return value.split(separator: "|", omittingEmptySubsequences: false)
+        .map { String($0).trimmingCharacters(in: .whitespaces) }
+}
+
+func isTableSeparator(_ line: String) -> Bool {
+    guard line.contains("-") else { return false }
+    let cells = parseTableRow(line)
+    guard !cells.isEmpty else { return false }
+    return cells.allSatisfy { cell in
+        cell.range(of: #"^:?-{3,}:?$"#, options: .regularExpression) != nil
+    }
 }
 
 extension String {
@@ -939,12 +1628,18 @@ func renderMarkdownPDF(inputURL: URL, outputURL: URL) throws {
             renderer.drawHeading(level: level, text: text, previous: previous)
         case .paragraph(let text):
             renderer.drawParagraph(text, previous: previous)
-        case .bullet(let text):
-            renderer.drawBullet(text, previous: previous)
+        case .listItem(let marker, let level, let text):
+            renderer.drawListItem(marker: marker, level: level, text: text, previous: previous)
         case .image(let alt, let path):
             renderer.drawImage(alt: alt, path: path, previous: previous)
         case .code(let language, let text):
             renderer.drawCode(language: language, text: text, previous: previous)
+        case .blockquote(let text):
+            renderer.drawBlockquote(text, previous: previous)
+        case .horizontalRule:
+            renderer.drawHorizontalRule(previous: previous)
+        case .table(let table):
+            renderer.drawTable(table, previous: previous)
         }
         previous = block
     }

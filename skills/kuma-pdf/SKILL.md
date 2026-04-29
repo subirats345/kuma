@@ -27,13 +27,16 @@ skills/kuma-pdf/scripts/render-preview.sh input.md output.pdf .build/previews
 Prefer:
 
 - `#` through `######` headings
-- short paragraphs
-- unordered lists with `-` or `*`
+- short paragraphs with bold, italic, inline code, links, raw URLs, and emails
+- blockquotes
+- unordered, ordered, nested, and task lists
+- simple pipe tables
+- horizontal rules
 - local images with `![caption](path/to/image.png)`
 - fenced code blocks
 - plain URLs and email addresses
 
-Avoid remote images, HTML, tables, footnotes, nested lists, and Markdown extensions unless the current Kuma renderer explicitly supports them. Unsupported syntax renders as plain text.
+Avoid remote images, raw HTML, math, Mermaid diagrams, and footnotes unless the current Kuma renderer explicitly supports them. Unsupported syntax renders as plain text.
 
 ## Layout Notes
 
