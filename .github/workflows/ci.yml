@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: swift build
+      - name: Smoke render
+        run: |
+          swift run kuma Examples/basic.md .build/kuma-example.pdf
+          test -s .build/kuma-example.pdf
