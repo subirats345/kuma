@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Assets/kuma-mascot.svg" width="156" alt="Kuma mascot">
+  <img src="Assets/kuma-mascot.svg" width="620" alt="Kuma mascot">
 </p>
 
 <h1 align="center">Kuma</h1>
@@ -11,6 +11,21 @@
 <p align="center">
   <code>brew install subirats345/tap/kuma</code>
 </p>
+
+<pre align="center">
+        .--.
+     .-(    )-.
+    /   '  '   \
+   |   o    o   |
+   |     __     |
+    \  \____/  /
+     '._    _.'
+       /|  |\
+   ___/ |__| \___
+  /     PDF      \
+ /___ markdown ___\
+       kuma
+</pre>
 
 <p align="center">
   <img src="Assets/screenshots/basic.png" width="260" alt="Kuma basic example PDF screenshot">
