@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Kuma mascot</title>
+  <desc id="desc">A quiet minimal bear mascot holding a small PDF page.</desc>
+  <rect width="512" height="512" rx="96" fill="#fffaf4"/>
+  <circle cx="160" cy="154" r="54" fill="#201d1b"/>
+  <circle cx="352" cy="154" r="54" fill="#201d1b"/>
+  <circle cx="160" cy="154" r="28" fill="#fffaf4"/>
+  <circle cx="352" cy="154" r="28" fill="#fffaf4"/>
+  <circle cx="256" cy="254" r="158" fill="#201d1b"/>
+  <ellipse cx="256" cy="296" rx="92" ry="72" fill="#fffaf4"/>
+  <circle cx="210" cy="236" r="10" fill="#fffaf4"/>
+  <circle cx="302" cy="236" r="10" fill="#fffaf4"/>
+  <path d="M240 276c0-10 8-18 16-18s16 8 16 18c0 9-8 15-16 15s-16-6-16-15Z" fill="#e45b60"/>
+  <path d="M232 316c13 12 35 12 48 0" fill="none" stroke="#201d1b" stroke-width="10" stroke-linecap="round"/>
+  <rect x="304" y="300" width="96" height="126" rx="14" fill="#ffffff" stroke="#201d1b" stroke-width="10"/>
+  <path d="M374 300v31h26" fill="none" stroke="#201d1b" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="333" cy="359" r="6" fill="#e45b60"/>
+  <path d="M350 354h28M350 376h28M330 398h48" stroke="#201d1b" stroke-width="8" stroke-linecap="round"/>
+  <path d="M146 390c-22-20-36-48-36-80" fill="none" stroke="#201d1b" stroke-width="18" stroke-linecap="round"/>
+  <path d="M366 390c22-20 36-48 36-80" fill="none" stroke="#201d1b" stroke-width="18" stroke-linecap="round"/>
+</svg>

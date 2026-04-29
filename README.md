@@ -1,8 +1,26 @@
-# Kuma
+<p align="center">
+  <img src="Assets/kuma-mascot.svg" width="156" alt="Kuma mascot">
+</p>
 
-Kuma is a tiny native Markdown-to-PDF renderer for macOS.
+<h1 align="center">Kuma</h1>
 
-It is intentionally small: plain Markdown in, quiet A4 PDF out. It uses CoreText and Quartz directly, so there is no browser, HTML layer, or external runtime involved.
+<p align="center">
+  A tiny native Markdown-to-PDF renderer for macOS.
+</p>
+
+<p align="center">
+  <code>brew install subirats345/tap/kuma</code>
+</p>
+
+<p align="center">
+  <img src="Assets/screenshots/basic.png" width="260" alt="Kuma basic example PDF screenshot">
+  <img src="Assets/screenshots/shakespeare-sonnet-18.png" width="260" alt="Kuma Shakespeare PDF screenshot">
+  <img src="Assets/screenshots/dickinson-hope.png" width="260" alt="Kuma Dickinson PDF screenshot">
+</p>
+
+Kuma is deliberately small: plain Markdown in, quiet A4 PDF out. It uses CoreText and Quartz directly, so there is no browser, HTML layer, server runtime, or template engine involved.
+
+The goal is not to support every Markdown extension. The goal is to make simple documents feel calm, native, and printable.
 
 ## Install
 
@@ -12,9 +30,11 @@ With Homebrew:
 brew install subirats345/tap/kuma
 ```
 
-Build and install the CLI into `~/.local/bin`:
+From source:
 
 ```sh
+git clone https://github.com/subirats345/kuma.git
+cd kuma
 ./Scripts/install-local.sh
 ```
 
@@ -28,12 +48,39 @@ install -m 755 .build/release/kuma ~/.local/bin/kuma
 ## Usage
 
 ```sh
-kuma Examples/basic.md
-kuma Examples/basic.md output.pdf
-kuma Examples/basic.md -o output.pdf
+kuma input.md
+kuma input.md output.pdf
+kuma input.md -o output.pdf
 ```
 
 If no output path is provided, Kuma writes a `.pdf` next to the input Markdown file.
+
+The short alias is installed as `ku`:
+
+```sh
+ku Examples/basic.md
+```
+
+## Examples
+
+The examples are intentionally made from public-domain texts, so the repository stays easy to share.
+
+| Source | Rendered PDF preview |
+| --- | --- |
+| [`Examples/basic.md`](Examples/basic.md) | <img src="Assets/screenshots/basic.png" width="220" alt="Basic example preview"> |
+| [`Examples/shakespeare-sonnet-18.md`](Examples/shakespeare-sonnet-18.md) | <img src="Assets/screenshots/shakespeare-sonnet-18.png" width="220" alt="Shakespeare Sonnet 18 preview"> |
+| [`Examples/dickinson-hope.md`](Examples/dickinson-hope.md) | <img src="Assets/screenshots/dickinson-hope.png" width="220" alt="Emily Dickinson Hope preview"> |
+| [`Examples/cervantes-quixote.md`](Examples/cervantes-quixote.md) | <img src="Assets/screenshots/cervantes-quixote.png" width="220" alt="Don Quixote preview"> |
+| [`Examples/aurelius-meditations.md`](Examples/aurelius-meditations.md) | <img src="Assets/screenshots/aurelius-meditations.png" width="220" alt="Marcus Aurelius preview"> |
+
+Render all examples locally:
+
+```sh
+mkdir -p .build/examples
+for md in Examples/*.md; do
+  kuma "$md" ".build/examples/$(basename "$md" .md).pdf"
+done
+```
 
 ## Markdown Support
 
@@ -72,4 +119,4 @@ swift run kuma Examples/basic.md .build/kuma-example.pdf
 swift build -c release
 ```
 
-The project is deliberately dependency-free. The only requirement is macOS with SwiftPM.
+Kuma is dependency-free. The only requirement is macOS with SwiftPM.
