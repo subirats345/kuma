@@ -3,6 +3,8 @@
 hello@example.com
 https://example.com
 
+![Kuma mascot](../Assets/kuma-mascot.png)
+
 ## Profile
 
 Kuma turns a small Markdown file into a clean native macOS PDF. The layout is intentionally quiet: generous margins, compact headings, comfortable line height, and links highlighted with a soft red accent.

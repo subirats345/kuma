@@ -14,11 +14,11 @@
 
 <p align="center">
   <img src="Assets/screenshots/basic.png" width="260" alt="Kuma basic example PDF screenshot">
-  <img src="Assets/screenshots/shakespeare-sonnet-18.png" width="260" alt="Kuma Shakespeare PDF screenshot">
-  <img src="Assets/screenshots/dickinson-hope.png" width="260" alt="Kuma Dickinson PDF screenshot">
+  <img src="Assets/screenshots/technical-note.png" width="260" alt="Kuma technical PDF screenshot">
+  <img src="Assets/screenshots/moby-dick-loomings.png" width="260" alt="Kuma Moby-Dick PDF screenshot">
 </p>
 
-Kuma is deliberately small: plain Markdown in, quiet A4 PDF out. It uses CoreText and Quartz directly, so there is no browser, HTML layer, server runtime, or template engine involved.
+Kuma is deliberately small: plain Markdown in, quiet A4 PDF out. It uses CoreText, ImageIO, and Quartz directly, so there is no browser, HTML layer, server runtime, or template engine involved.
 
 The goal is not to support every Markdown extension. The goal is to make simple documents feel calm, native, and printable.
 
@@ -68,6 +68,8 @@ The examples are intentionally made from public-domain texts, so the repository 
 | Source | Rendered PDF preview |
 | --- | --- |
 | [`Examples/basic.md`](Examples/basic.md) | <img src="Assets/screenshots/basic.png" width="220" alt="Basic example preview"> |
+| [`Examples/technical-note.md`](Examples/technical-note.md) | <img src="Assets/screenshots/technical-note.png" width="220" alt="Technical note preview"> |
+| [`Examples/moby-dick-loomings.md`](Examples/moby-dick-loomings.md) | <img src="Assets/screenshots/moby-dick-loomings.png" width="220" alt="Moby-Dick preview"> |
 | [`Examples/shakespeare-sonnet-18.md`](Examples/shakespeare-sonnet-18.md) | <img src="Assets/screenshots/shakespeare-sonnet-18.png" width="220" alt="Shakespeare Sonnet 18 preview"> |
 | [`Examples/dickinson-hope.md`](Examples/dickinson-hope.md) | <img src="Assets/screenshots/dickinson-hope.png" width="220" alt="Emily Dickinson Hope preview"> |
 | [`Examples/cervantes-quixote.md`](Examples/cervantes-quixote.md) | <img src="Assets/screenshots/cervantes-quixote.png" width="220" alt="Don Quixote preview"> |
@@ -89,6 +91,8 @@ Kuma currently supports the small subset needed for calm documents:
 - `#` through `######` headings
 - paragraphs
 - unordered lists with `-` or `*`
+- local images with `![caption](path/to/image.png)`
+- fenced code blocks
 - automatic accent coloring for emails and `http` or `https` URLs
 
 Unsupported Markdown is treated as plain text. That keeps the renderer predictable while the project is still small.
@@ -106,6 +110,7 @@ You can use your own local fonts without committing or redistributing them:
 KUMA_FONT_DIR="$HOME/Library/Fonts" \
 KUMA_BODY_FONT="YourBodyFont-Regular" \
 KUMA_HEADING_FONT="YourHeadingFont-Semibold" \
+KUMA_CODE_FONT="YourMonoFont-Regular" \
 kuma Examples/basic.md output.pdf
 ```
 

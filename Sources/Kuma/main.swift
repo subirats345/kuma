@@ -2,6 +2,7 @@ import CoreFoundation
 import CoreGraphics
 import CoreText
 import Foundation
+import ImageIO
 
 let pageWidth: CGFloat = 595
 let pageHeight: CGFloat = 842
@@ -18,20 +19,25 @@ let maxBaselineY: CGFloat = 790
 let accentColor = CGColor(red: 0.8666667, green: 0.2980392, blue: 0.3098039, alpha: 1)
 let blackColor = CGColor(gray: 0, alpha: 1)
 let appName = "Kuma"
-let appVersion = "0.1.0"
+let appVersion = "0.2.0"
 let defaultBodyFontName = "AvenirNext-Regular"
 let defaultHeadingFontName = "AvenirNext-DemiBold"
+let defaultCodeFontName = "Menlo-Regular"
 
 enum Block {
     case heading(level: Int, text: String)
     case paragraph(String)
     case bullet(String)
+    case image(alt: String, path: String)
+    case code(language: String?, text: String)
 }
 
 struct Renderer {
     let context: CGContext
+    let inputDirectory: URL
     let bodyFont: CTFont
     let headingFont: CTFont
+    let codeFont: CTFont
     var y: CGFloat = firstPageStartY
     var pageNumber = 0
 
@@ -59,6 +65,21 @@ struct Renderer {
     func drawLine(_ line: CTLine, x: CGFloat, baselineY: CGFloat) {
         context.textPosition = CGPoint(x: x, y: pageHeight - baselineY)
         CTLineDraw(line, context)
+    }
+
+    func fillRect(x: CGFloat, topY: CGFloat, width: CGFloat, height: CGFloat, color: CGColor) {
+        context.saveGState()
+        context.setFillColor(color)
+        context.fill(CGRect(x: x, y: pageHeight - topY - height, width: width, height: height))
+        context.restoreGState()
+    }
+
+    func strokeRect(x: CGFloat, topY: CGFloat, width: CGFloat, height: CGFloat, color: CGColor, lineWidth: CGFloat) {
+        context.saveGState()
+        context.setStrokeColor(color)
+        context.setLineWidth(lineWidth)
+        context.stroke(CGRect(x: x, y: pageHeight - topY - height, width: width, height: height))
+        context.restoreGState()
     }
 
     mutating func drawWrapped(_ attributed: NSAttributedString, x: CGFloat, width: CGFloat, lineHeight: CGFloat) {
@@ -188,6 +209,129 @@ struct Renderer {
         context.restoreGState()
     }
 
+    mutating func drawImage(alt: String, path: String, previous: Block?) {
+        if previous != nil {
+            y += 18
+        }
+
+        guard let image = loadImage(path: path) else {
+            drawParagraph("[image not found: \(path)]", previous: previous)
+            return
+        }
+
+        let sourceWidth = CGFloat(image.width)
+        let sourceHeight = CGFloat(image.height)
+        guard sourceWidth > 0, sourceHeight > 0 else { return }
+
+        let maxImageHeight: CGFloat = 300
+        let scale = min(bodyWidth / sourceWidth, maxImageHeight / sourceHeight, 1)
+        let drawWidth = sourceWidth * scale
+        let drawHeight = sourceHeight * scale
+
+        if y + drawHeight > maxBaselineY {
+            newPage()
+        }
+
+        let x = leftX + ((bodyWidth - drawWidth) / 2)
+        let rect = CGRect(x: x, y: pageHeight - y - drawHeight, width: drawWidth, height: drawHeight)
+
+        context.saveGState()
+        context.interpolationQuality = .high
+        context.draw(image, in: rect)
+        context.restoreGState()
+
+        y += drawHeight + 20
+
+        if !alt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let captionFont = CTFontCreateCopyWithAttributes(bodyFont, 9, nil, nil)
+            let caption = NSAttributedString(string: alt, attributes: [
+                kCTFontAttributeName as NSAttributedString.Key: captionFont,
+                kCTForegroundColorAttributeName as NSAttributedString.Key: CGColor(gray: 0.35, alpha: 1)
+            ])
+            drawWrapped(caption, x: leftX, width: bodyWidth, lineHeight: 14)
+            y += 8
+        }
+    }
+
+    mutating func drawCode(language: String?, text: String, previous: Block?) {
+        if previous != nil {
+            y += 16
+        }
+
+        let padding: CGFloat = 10
+        let codeLineHeight: CGFloat = 15
+        let codeWidth = bodyWidth
+        let innerWidth = codeWidth - (padding * 2)
+        let lines = makeCodeLines(text, width: innerWidth)
+        var index = 0
+
+        while index < lines.count {
+            if y > maxBaselineY - 45 {
+                newPage()
+            }
+
+            let available = maxBaselineY - y
+            let maxLines = max(1, Int((available - (padding * 2)) / codeLineHeight))
+            let count = min(maxLines, lines.count - index)
+            let boxHeight = CGFloat(count) * codeLineHeight + (padding * 2)
+
+            fillRect(x: leftX, topY: y, width: codeWidth, height: boxHeight, color: CGColor(red: 0.965, green: 0.955, blue: 0.935, alpha: 1))
+            strokeRect(x: leftX, topY: y, width: codeWidth, height: boxHeight, color: CGColor(red: 0.88, green: 0.86, blue: 0.82, alpha: 1), lineWidth: 0.8)
+
+            var baseline = y + padding + 10
+            for line in lines[index..<(index + count)] {
+                drawLine(line, x: leftX + padding, baselineY: baseline)
+                baseline += codeLineHeight
+            }
+
+            y += boxHeight + 18
+            index += count
+        }
+    }
+
+    func makeCodeLines(_ text: String, width: CGFloat) -> [CTLine] {
+        let codeColor = CGColor(red: 0.12, green: 0.11, blue: 0.10, alpha: 1)
+        let rawLines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        var lines: [CTLine] = []
+
+        for rawLine in rawLines {
+            let content = rawLine.isEmpty ? " " : rawLine
+            let attributed = NSAttributedString(string: content, attributes: [
+                kCTFontAttributeName as NSAttributedString.Key: codeFont,
+                kCTForegroundColorAttributeName as NSAttributedString.Key: codeColor
+            ])
+            let typesetter = CTTypesetterCreateWithAttributedString(attributed)
+            var start = 0
+            let length = attributed.length
+
+            while start < max(length, 1) {
+                let suggested = CTTypesetterSuggestLineBreak(typesetter, start, Double(width))
+                let count = max(1, min(suggested, length - start))
+                lines.append(CTTypesetterCreateLine(typesetter, CFRange(location: start, length: count)))
+                start += count
+            }
+        }
+
+        return lines
+    }
+
+    func loadImage(path: String) -> CGImage? {
+        let url = resolveImageURL(path)
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        return CGImageSourceCreateImageAtIndex(source, 0, nil)
+    }
+
+    func resolveImageURL(_ path: String) -> URL {
+        let cleanPath = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        if cleanPath.hasPrefix("/") || cleanPath.hasPrefix("~") {
+            return expandedFileURL(cleanPath)
+        }
+        if let url = URL(string: cleanPath), url.scheme != nil {
+            return url
+        }
+        return inputDirectory.appendingPathComponent(cleanPath).standardizedFileURL
+    }
+
     func makeInlineAttributed(_ text: String) -> NSMutableAttributedString {
         let result = NSMutableAttributedString(string: text, attributes: [
             kCTFontAttributeName as NSAttributedString.Key: bodyFont,
@@ -229,6 +373,7 @@ func printUsage(to stream: UnsafeMutablePointer<FILE>) {
       KUMA_FONT_DIR         Register .otf, .ttf, and .ttc fonts from a local directory
       KUMA_BODY_FONT        Body font PostScript name. Default: \(defaultBodyFontName)
       KUMA_HEADING_FONT     Heading font PostScript name. Default: \(defaultHeadingFontName)
+      KUMA_CODE_FONT        Code font PostScript name. Default: \(defaultCodeFontName)
 
     """, stream)
 }
@@ -325,6 +470,8 @@ func font(named name: String, size: CGFloat) -> CTFont {
 func parseMarkdown(_ markdown: String) -> [Block] {
     var blocks: [Block] = []
     var paragraph: [String] = []
+    var codeLanguage: String?
+    var codeLines: [String] = []
 
     func flushParagraph() {
         if !paragraph.isEmpty {
@@ -337,14 +484,40 @@ func parseMarkdown(_ markdown: String) -> [Block] {
         let line = String(raw)
         let trimmed = line.trimmingCharacters(in: .whitespaces)
 
+        if codeLanguage != nil {
+            if trimmed.hasPrefix("```") {
+                blocks.append(.code(language: codeLanguage, text: codeLines.joined(separator: "\n")))
+                codeLanguage = nil
+                codeLines.removeAll()
+            } else {
+                codeLines.append(line)
+            }
+            continue
+        }
+
         if trimmed.isEmpty {
             flushParagraph()
+            continue
+        }
+
+        if let match = trimmed.oneCapture(#"^```\s*([A-Za-z0-9_+.-]*)\s*$"#) {
+            flushParagraph()
+            codeLanguage = match.isEmpty ? nil : match
+            if codeLanguage == nil {
+                codeLanguage = ""
+            }
             continue
         }
 
         if let match = trimmed.twoCaptures(#"^(#{1,6})\s+(.+)$"#) {
             flushParagraph()
             blocks.append(.heading(level: match.0.count, text: match.1))
+            continue
+        }
+
+        if let match = trimmed.twoCaptures(#"^!\[([^\]]*)\]\(([^)]+)\)\s*$"#) {
+            flushParagraph()
+            blocks.append(.image(alt: match.0, path: match.1))
             continue
         }
 
@@ -358,6 +531,9 @@ func parseMarkdown(_ markdown: String) -> [Block] {
     }
 
     flushParagraph()
+    if codeLanguage != nil {
+        blocks.append(.code(language: codeLanguage, text: codeLines.joined(separator: "\n")))
+    }
     return blocks
 }
 
@@ -389,6 +565,7 @@ registerFonts(from: environment["KUMA_FONT_DIR"])
 
 let bodyFont = font(named: environment["KUMA_BODY_FONT"] ?? defaultBodyFontName, size: 11)
 let headingFont = font(named: environment["KUMA_HEADING_FONT"] ?? defaultHeadingFontName, size: 18)
+let codeFont = font(named: environment["KUMA_CODE_FONT"] ?? defaultCodeFontName, size: 9.5)
 
 guard let consumer = CGDataConsumer(url: outputURL as CFURL) else {
     fatalError("Could not create PDF output at \(outputURL.path)")
@@ -401,8 +578,10 @@ guard let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else
 
 var renderer = Renderer(
     context: context,
+    inputDirectory: inputURL.deletingLastPathComponent(),
     bodyFont: bodyFont,
-    headingFont: headingFont
+    headingFont: headingFont,
+    codeFont: codeFont
 )
 
 renderer.beginPage(startY: firstPageStartY)
@@ -415,6 +594,10 @@ for block in blocks {
         renderer.drawParagraph(text, previous: previous)
     case .bullet(let text):
         renderer.drawBullet(text, previous: previous)
+    case .image(let alt, let path):
+        renderer.drawImage(alt: alt, path: path, previous: previous)
+    case .code(let language, let text):
+        renderer.drawCode(language: language, text: text, previous: previous)
     }
     previous = block
 }
