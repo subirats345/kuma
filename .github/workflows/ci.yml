@@ -13,11 +13,27 @@ jobs:
       - uses: actions/checkout@v6
       - name: Build
         run: swift build
+      - name: Smoke CLI
+        run: |
+          mkdir -p .build/cli
+          .build/debug/kuma --help
+          .build/debug/kuma init .build/cli/starter.md
+          .build/debug/kuma .build/cli/starter.md .build/cli/starter.pdf
+          test -s .build/cli/starter.pdf
+          .build/debug/kuma watch .build/cli/starter.md .build/cli/watch.pdf > .build/cli/watch.log 2>&1 &
+          pid=$!
+          sleep 2
+          test -s .build/cli/watch.pdf
+          printf '\nchanged\n' >> .build/cli/starter.md
+          sleep 3
+          grep -q "Rendered" .build/cli/watch.log
+          kill "$pid"
+          wait "$pid" 2>/dev/null || true
       - name: Smoke render examples
         run: |
           mkdir -p .build/examples
           for md in Examples/*.md; do
             name=$(basename "$md" .md)
-            swift run kuma "$md" ".build/examples/$name.pdf"
+            .build/debug/kuma "$md" ".build/examples/$name.pdf"
             test -s ".build/examples/$name.pdf"
           done

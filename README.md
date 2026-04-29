@@ -51,6 +51,7 @@ install -m 755 .build/release/kuma ~/.local/bin/kuma
 kuma input.md
 kuma input.md output.pdf
 kuma input.md -o output.pdf
+kuma input.md --open
 ```
 
 If no output path is provided, Kuma writes a `.pdf` next to the input Markdown file.
@@ -59,6 +60,20 @@ The short alias is installed as `ku`:
 
 ```sh
 ku Examples/basic.md
+```
+
+Create a starter Markdown file:
+
+```sh
+kuma init
+kuma init notes.md
+```
+
+Watch a Markdown file and re-render the PDF whenever it changes:
+
+```sh
+kuma watch notes.md
+kuma watch notes.md notes.pdf --open
 ```
 
 ## Examples
@@ -102,6 +117,8 @@ Unsupported Markdown is treated as plain text. That keeps the renderer predictab
 ```sh
 swift build
 swift run kuma Examples/basic.md .build/kuma-example.pdf
+swift run kuma init .build/kuma-example.md
+swift run kuma watch .build/kuma-example.md .build/kuma-example.pdf
 swift build -c release
 ```
 
