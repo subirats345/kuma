@@ -17,7 +17,7 @@ let pageStartY: CGFloat = 64
 let firstPageStartY: CGFloat = 72
 let maxBaselineY: CGFloat = 790
 let appName = "Kuma"
-let appVersion = "0.3.0"
+let appVersion = "0.3.1"
 let defaultBodyFontName = "AvenirNext-Regular"
 let defaultHeadingFontName = "AvenirNext-DemiBold"
 let defaultCodeFontName = "Menlo-Regular"
@@ -52,50 +52,50 @@ let themes = [
     Theme(
         name: "sumi",
         description: "Monochrome ink with quiet graphite rules",
-        pageColor: CGColor(red: 0.992, green: 0.99, blue: 0.982, alpha: 1),
+        pageColor: CGColor(red: 0.955, green: 0.95, blue: 0.93, alpha: 1),
         textColor: CGColor(gray: 0.08, alpha: 1),
-        headingColor: CGColor(gray: 0, alpha: 1),
-        accentColor: CGColor(gray: 0.18, alpha: 1),
-        captionColor: CGColor(gray: 0.42, alpha: 1),
-        codeTextColor: CGColor(gray: 0.12, alpha: 1),
-        codeBackgroundColor: CGColor(gray: 0.965, alpha: 1),
-        codeBorderColor: CGColor(gray: 0.82, alpha: 1)
+        headingColor: CGColor(gray: 0.02, alpha: 1),
+        accentColor: CGColor(gray: 0.25, alpha: 1),
+        captionColor: CGColor(gray: 0.36, alpha: 1),
+        codeTextColor: CGColor(gray: 0.10, alpha: 1),
+        codeBackgroundColor: CGColor(red: 0.90, green: 0.895, blue: 0.875, alpha: 1),
+        codeBorderColor: CGColor(gray: 0.70, alpha: 1)
     ),
     Theme(
         name: "aka",
         description: "Editorial black text with a deeper cinnabar accent",
-        pageColor: CGColor(red: 1.0, green: 0.985, blue: 0.97, alpha: 1),
+        pageColor: CGColor(red: 1.0, green: 0.955, blue: 0.935, alpha: 1),
         textColor: CGColor(red: 0.055, green: 0.045, blue: 0.04, alpha: 1),
-        headingColor: CGColor(red: 0.02, green: 0.015, blue: 0.012, alpha: 1),
-        accentColor: CGColor(red: 0.72, green: 0.16, blue: 0.14, alpha: 1),
-        captionColor: CGColor(red: 0.36, green: 0.30, blue: 0.27, alpha: 1),
-        codeTextColor: CGColor(red: 0.15, green: 0.08, blue: 0.06, alpha: 1),
-        codeBackgroundColor: CGColor(red: 0.985, green: 0.955, blue: 0.93, alpha: 1),
-        codeBorderColor: CGColor(red: 0.88, green: 0.78, blue: 0.70, alpha: 1)
+        headingColor: CGColor(red: 0.52, green: 0.11, blue: 0.10, alpha: 1),
+        accentColor: CGColor(red: 0.74, green: 0.12, blue: 0.10, alpha: 1),
+        captionColor: CGColor(red: 0.58, green: 0.24, blue: 0.20, alpha: 1),
+        codeTextColor: CGColor(red: 0.24, green: 0.08, blue: 0.06, alpha: 1),
+        codeBackgroundColor: CGColor(red: 1.0, green: 0.925, blue: 0.90, alpha: 1),
+        codeBorderColor: CGColor(red: 0.86, green: 0.60, blue: 0.52, alpha: 1)
     ),
     Theme(
         name: "mori",
         description: "Muted forest accent for essays and field notes",
-        pageColor: CGColor(red: 0.985, green: 0.992, blue: 0.982, alpha: 1),
+        pageColor: CGColor(red: 0.94, green: 0.98, blue: 0.92, alpha: 1),
         textColor: CGColor(red: 0.055, green: 0.07, blue: 0.06, alpha: 1),
-        headingColor: CGColor(red: 0.025, green: 0.04, blue: 0.035, alpha: 1),
-        accentColor: CGColor(red: 0.23, green: 0.43, blue: 0.31, alpha: 1),
-        captionColor: CGColor(red: 0.30, green: 0.38, blue: 0.33, alpha: 1),
-        codeTextColor: CGColor(red: 0.08, green: 0.16, blue: 0.12, alpha: 1),
-        codeBackgroundColor: CGColor(red: 0.945, green: 0.965, blue: 0.94, alpha: 1),
-        codeBorderColor: CGColor(red: 0.78, green: 0.84, blue: 0.76, alpha: 1)
+        headingColor: CGColor(red: 0.12, green: 0.34, blue: 0.22, alpha: 1),
+        accentColor: CGColor(red: 0.18, green: 0.48, blue: 0.29, alpha: 1),
+        captionColor: CGColor(red: 0.20, green: 0.42, blue: 0.27, alpha: 1),
+        codeTextColor: CGColor(red: 0.05, green: 0.20, blue: 0.11, alpha: 1),
+        codeBackgroundColor: CGColor(red: 0.90, green: 0.96, blue: 0.89, alpha: 1),
+        codeBorderColor: CGColor(red: 0.62, green: 0.78, blue: 0.58, alpha: 1)
     ),
     Theme(
         name: "aizome",
         description: "Indigo accent with cool technical code blocks",
-        pageColor: CGColor(red: 0.985, green: 0.99, blue: 1.0, alpha: 1),
+        pageColor: CGColor(red: 0.925, green: 0.95, blue: 1.0, alpha: 1),
         textColor: CGColor(red: 0.04, green: 0.045, blue: 0.065, alpha: 1),
-        headingColor: CGColor(red: 0.02, green: 0.025, blue: 0.045, alpha: 1),
-        accentColor: CGColor(red: 0.19, green: 0.31, blue: 0.62, alpha: 1),
-        captionColor: CGColor(red: 0.28, green: 0.32, blue: 0.42, alpha: 1),
-        codeTextColor: CGColor(red: 0.06, green: 0.10, blue: 0.20, alpha: 1),
-        codeBackgroundColor: CGColor(red: 0.94, green: 0.955, blue: 0.98, alpha: 1),
-        codeBorderColor: CGColor(red: 0.78, green: 0.82, blue: 0.90, alpha: 1)
+        headingColor: CGColor(red: 0.12, green: 0.24, blue: 0.58, alpha: 1),
+        accentColor: CGColor(red: 0.12, green: 0.28, blue: 0.72, alpha: 1),
+        captionColor: CGColor(red: 0.18, green: 0.28, blue: 0.54, alpha: 1),
+        codeTextColor: CGColor(red: 0.04, green: 0.10, blue: 0.28, alpha: 1),
+        codeBackgroundColor: CGColor(red: 0.88, green: 0.92, blue: 1.0, alpha: 1),
+        codeBorderColor: CGColor(red: 0.58, green: 0.68, blue: 0.92, alpha: 1)
     )
 ]
 
