@@ -36,14 +36,12 @@ jobs:
           grep -q "Rendered" .build/cli/watch.log
           kill "$pid"
           wait "$pid" 2>/dev/null || true
-      - name: Smoke render examples
+      - name: Build visual gallery
         run: |
-          mkdir -p .build/examples
-          for md in Examples/*.md; do
-            name=$(basename "$md" .md)
-            .build/debug/kuma "$md" ".build/examples/$name.pdf"
-            test -s ".build/examples/$name.pdf"
-          done
+          KUMA_BIN="$PWD/.build/debug/kuma" KUMA_SKIP_PREVIEW=1 Scripts/render-gallery.sh .build/gallery
+          test -s .build/gallery/index.html
+          test -s .build/gallery/summary.txt
+          test -s .build/gallery/pdfs/basic.pdf
       - name: Validate Codex skill
         run: |
           test -s skills/kuma-pdf/SKILL.md

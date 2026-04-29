@@ -118,10 +118,14 @@ The examples are intentionally made from public-domain texts, so the repository 
 Render all examples locally:
 
 ```sh
-mkdir -p .build/examples
-for md in Examples/*.md; do
-  kuma "$md" ".build/examples/$(basename "$md" .md).pdf"
-done
+Scripts/render-gallery.sh
+open .build/gallery/index.html
+```
+
+Refresh the README screenshots from the same render pass:
+
+```sh
+Scripts/render-gallery.sh --update-screenshots
 ```
 
 ## Markdown Support
@@ -144,6 +148,7 @@ swift build
 swift run kuma Examples/basic.md .build/kuma-example.pdf
 swift run kuma init .build/kuma-example.md
 swift run kuma watch .build/kuma-example.md .build/kuma-example.pdf
+Scripts/render-gallery.sh
 swift build -c release
 ```
 
