@@ -6,6 +6,12 @@ It is intentionally small: plain Markdown in, quiet A4 PDF out. It uses CoreText
 
 ## Install
 
+With Homebrew:
+
+```sh
+brew install subirats345/tap/kuma
+```
+
 Build and install the CLI into `~/.local/bin`:
 
 ```sh
