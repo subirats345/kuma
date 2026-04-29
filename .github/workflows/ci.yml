@@ -13,8 +13,6 @@ jobs:
       - uses: actions/checkout@v6
       - name: Build
         run: swift build
-      - name: Theme list
-        run: swift run kuma --list-themes
       - name: Smoke render examples
         run: |
           mkdir -p .build/examples
@@ -22,11 +20,4 @@ jobs:
             name=$(basename "$md" .md)
             swift run kuma "$md" ".build/examples/$name.pdf"
             test -s ".build/examples/$name.pdf"
-          done
-      - name: Smoke render themes
-        run: |
-          mkdir -p .build/themes
-          for theme in paper sumi aka mori aizome; do
-            swift run kuma Examples/technical-note.md --theme "$theme" ".build/themes/technical-note-$theme.pdf"
-            test -s ".build/themes/technical-note-$theme.pdf"
           done
