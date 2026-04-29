@@ -12,21 +12,6 @@
   <code>brew install subirats345/tap/kuma</code>
 </p>
 
-<pre align="center">
-        .--.
-     .-(    )-.
-    /   '  '   \
-   |   o    o   |
-   |     __     |
-    \  \____/  /
-     '._    _.'
-       /|  |\
-   ___/ |__| \___
-  /     PDF      \
- /___ markdown ___\
-       kuma
-</pre>
-
 <p align="center">
   <img src="Assets/screenshots/basic.png" width="260" alt="Kuma basic example PDF screenshot">
   <img src="Assets/screenshots/shakespeare-sonnet-18.png" width="260" alt="Kuma Shakespeare PDF screenshot">
