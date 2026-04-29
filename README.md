@@ -51,6 +51,8 @@ install -m 755 .build/release/kuma ~/.local/bin/kuma
 kuma input.md
 kuma input.md output.pdf
 kuma input.md -o output.pdf
+kuma input.md --theme sumi
+kuma --list-themes
 ```
 
 If no output path is provided, Kuma writes a `.pdf` next to the input Markdown file.
@@ -60,6 +62,26 @@ The short alias is installed as `ku`:
 ```sh
 ku Examples/basic.md
 ```
+
+## Themes
+
+Kuma ships with a tiny set of built-in themes. They change the page tint, text color, accent marks, captions, and code block colors while keeping the same quiet layout.
+
+```sh
+kuma Examples/technical-note.md --theme paper
+kuma Examples/technical-note.md --theme sumi
+KUMA_THEME=aizome kuma Examples/technical-note.md
+```
+
+Available themes:
+
+| Theme | Preview |
+| --- | --- |
+| `paper` | <img src="Assets/screenshots/theme-paper.png" width="180" alt="Paper theme preview"> |
+| `sumi` | <img src="Assets/screenshots/theme-sumi.png" width="180" alt="Sumi theme preview"> |
+| `aka` | <img src="Assets/screenshots/theme-aka.png" width="180" alt="Aka theme preview"> |
+| `mori` | <img src="Assets/screenshots/theme-mori.png" width="180" alt="Mori theme preview"> |
+| `aizome` | <img src="Assets/screenshots/theme-aizome.png" width="180" alt="Aizome theme preview"> |
 
 ## Examples
 

@@ -16,13 +16,90 @@ let bodyLineHeight: CGFloat = 20
 let pageStartY: CGFloat = 64
 let firstPageStartY: CGFloat = 72
 let maxBaselineY: CGFloat = 790
-let accentColor = CGColor(red: 0.8666667, green: 0.2980392, blue: 0.3098039, alpha: 1)
-let blackColor = CGColor(gray: 0, alpha: 1)
 let appName = "Kuma"
-let appVersion = "0.2.0"
+let appVersion = "0.3.0"
 let defaultBodyFontName = "AvenirNext-Regular"
 let defaultHeadingFontName = "AvenirNext-DemiBold"
 let defaultCodeFontName = "Menlo-Regular"
+let defaultThemeName = "paper"
+
+struct Theme {
+    let name: String
+    let description: String
+    let pageColor: CGColor
+    let textColor: CGColor
+    let headingColor: CGColor
+    let accentColor: CGColor
+    let captionColor: CGColor
+    let codeTextColor: CGColor
+    let codeBackgroundColor: CGColor
+    let codeBorderColor: CGColor
+}
+
+let themes = [
+    Theme(
+        name: "paper",
+        description: "Warm white page, black text, soft red marks",
+        pageColor: CGColor(gray: 1, alpha: 1),
+        textColor: CGColor(gray: 0, alpha: 1),
+        headingColor: CGColor(gray: 0, alpha: 1),
+        accentColor: CGColor(red: 0.8666667, green: 0.2980392, blue: 0.3098039, alpha: 1),
+        captionColor: CGColor(gray: 0.35, alpha: 1),
+        codeTextColor: CGColor(red: 0.12, green: 0.11, blue: 0.10, alpha: 1),
+        codeBackgroundColor: CGColor(red: 0.965, green: 0.955, blue: 0.935, alpha: 1),
+        codeBorderColor: CGColor(red: 0.88, green: 0.86, blue: 0.82, alpha: 1)
+    ),
+    Theme(
+        name: "sumi",
+        description: "Monochrome ink with quiet graphite rules",
+        pageColor: CGColor(red: 0.992, green: 0.99, blue: 0.982, alpha: 1),
+        textColor: CGColor(gray: 0.08, alpha: 1),
+        headingColor: CGColor(gray: 0, alpha: 1),
+        accentColor: CGColor(gray: 0.18, alpha: 1),
+        captionColor: CGColor(gray: 0.42, alpha: 1),
+        codeTextColor: CGColor(gray: 0.12, alpha: 1),
+        codeBackgroundColor: CGColor(gray: 0.965, alpha: 1),
+        codeBorderColor: CGColor(gray: 0.82, alpha: 1)
+    ),
+    Theme(
+        name: "aka",
+        description: "Editorial black text with a deeper cinnabar accent",
+        pageColor: CGColor(red: 1.0, green: 0.985, blue: 0.97, alpha: 1),
+        textColor: CGColor(red: 0.055, green: 0.045, blue: 0.04, alpha: 1),
+        headingColor: CGColor(red: 0.02, green: 0.015, blue: 0.012, alpha: 1),
+        accentColor: CGColor(red: 0.72, green: 0.16, blue: 0.14, alpha: 1),
+        captionColor: CGColor(red: 0.36, green: 0.30, blue: 0.27, alpha: 1),
+        codeTextColor: CGColor(red: 0.15, green: 0.08, blue: 0.06, alpha: 1),
+        codeBackgroundColor: CGColor(red: 0.985, green: 0.955, blue: 0.93, alpha: 1),
+        codeBorderColor: CGColor(red: 0.88, green: 0.78, blue: 0.70, alpha: 1)
+    ),
+    Theme(
+        name: "mori",
+        description: "Muted forest accent for essays and field notes",
+        pageColor: CGColor(red: 0.985, green: 0.992, blue: 0.982, alpha: 1),
+        textColor: CGColor(red: 0.055, green: 0.07, blue: 0.06, alpha: 1),
+        headingColor: CGColor(red: 0.025, green: 0.04, blue: 0.035, alpha: 1),
+        accentColor: CGColor(red: 0.23, green: 0.43, blue: 0.31, alpha: 1),
+        captionColor: CGColor(red: 0.30, green: 0.38, blue: 0.33, alpha: 1),
+        codeTextColor: CGColor(red: 0.08, green: 0.16, blue: 0.12, alpha: 1),
+        codeBackgroundColor: CGColor(red: 0.945, green: 0.965, blue: 0.94, alpha: 1),
+        codeBorderColor: CGColor(red: 0.78, green: 0.84, blue: 0.76, alpha: 1)
+    ),
+    Theme(
+        name: "aizome",
+        description: "Indigo accent with cool technical code blocks",
+        pageColor: CGColor(red: 0.985, green: 0.99, blue: 1.0, alpha: 1),
+        textColor: CGColor(red: 0.04, green: 0.045, blue: 0.065, alpha: 1),
+        headingColor: CGColor(red: 0.02, green: 0.025, blue: 0.045, alpha: 1),
+        accentColor: CGColor(red: 0.19, green: 0.31, blue: 0.62, alpha: 1),
+        captionColor: CGColor(red: 0.28, green: 0.32, blue: 0.42, alpha: 1),
+        codeTextColor: CGColor(red: 0.06, green: 0.10, blue: 0.20, alpha: 1),
+        codeBackgroundColor: CGColor(red: 0.94, green: 0.955, blue: 0.98, alpha: 1),
+        codeBorderColor: CGColor(red: 0.78, green: 0.82, blue: 0.90, alpha: 1)
+    )
+]
+
+let themesByName = Dictionary(uniqueKeysWithValues: themes.map { ($0.name, $0) })
 
 enum Block {
     case heading(level: Int, text: String)
@@ -38,12 +115,15 @@ struct Renderer {
     let bodyFont: CTFont
     let headingFont: CTFont
     let codeFont: CTFont
+    let theme: Theme
     var y: CGFloat = firstPageStartY
     var pageNumber = 0
 
     mutating func beginPage(startY: CGFloat) {
         let box = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
         context.beginPDFPage([kCGPDFContextMediaBox: box] as CFDictionary)
+        context.setFillColor(theme.pageColor)
+        context.fill(box)
         context.textMatrix = .identity
         context.setShouldAntialias(true)
         context.setShouldSmoothFonts(true)
@@ -147,7 +227,7 @@ struct Renderer {
         let font = CTFontCreateCopyWithAttributes(headingFont, size, nil, nil)
         let attr = NSAttributedString(string: text, attributes: [
             kCTFontAttributeName as NSAttributedString.Key: font,
-            kCTForegroundColorAttributeName as NSAttributedString.Key: blackColor
+            kCTForegroundColorAttributeName as NSAttributedString.Key: theme.headingColor
         ])
         let line = CTLineCreateWithAttributedString(attr)
         drawLine(line, x: headingX, baselineY: y)
@@ -201,7 +281,7 @@ struct Renderer {
 
     func drawBulletDot(baselineY: CGFloat) {
         context.saveGState()
-        context.setFillColor(accentColor)
+        context.setFillColor(theme.accentColor)
         let radius: CGFloat = 2.45
         let centerY = baselineY - (CTFontGetCapHeight(bodyFont) / 2)
         let center = CGPoint(x: bulletDotX, y: pageHeight - centerY)
@@ -246,7 +326,7 @@ struct Renderer {
             let captionFont = CTFontCreateCopyWithAttributes(bodyFont, 9, nil, nil)
             let caption = NSAttributedString(string: alt, attributes: [
                 kCTFontAttributeName as NSAttributedString.Key: captionFont,
-                kCTForegroundColorAttributeName as NSAttributedString.Key: CGColor(gray: 0.35, alpha: 1)
+                kCTForegroundColorAttributeName as NSAttributedString.Key: theme.captionColor
             ])
             drawWrapped(caption, x: leftX, width: bodyWidth, lineHeight: 14)
             y += 8
@@ -275,8 +355,8 @@ struct Renderer {
             let count = min(maxLines, lines.count - index)
             let boxHeight = CGFloat(count) * codeLineHeight + (padding * 2)
 
-            fillRect(x: leftX, topY: y, width: codeWidth, height: boxHeight, color: CGColor(red: 0.965, green: 0.955, blue: 0.935, alpha: 1))
-            strokeRect(x: leftX, topY: y, width: codeWidth, height: boxHeight, color: CGColor(red: 0.88, green: 0.86, blue: 0.82, alpha: 1), lineWidth: 0.8)
+            fillRect(x: leftX, topY: y, width: codeWidth, height: boxHeight, color: theme.codeBackgroundColor)
+            strokeRect(x: leftX, topY: y, width: codeWidth, height: boxHeight, color: theme.codeBorderColor, lineWidth: 0.8)
 
             var baseline = y + padding + 10
             for line in lines[index..<(index + count)] {
@@ -290,7 +370,6 @@ struct Renderer {
     }
 
     func makeCodeLines(_ text: String, width: CGFloat) -> [CTLine] {
-        let codeColor = CGColor(red: 0.12, green: 0.11, blue: 0.10, alpha: 1)
         let rawLines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         var lines: [CTLine] = []
 
@@ -298,7 +377,7 @@ struct Renderer {
             let content = rawLine.isEmpty ? " " : rawLine
             let attributed = NSAttributedString(string: content, attributes: [
                 kCTFontAttributeName as NSAttributedString.Key: codeFont,
-                kCTForegroundColorAttributeName as NSAttributedString.Key: codeColor
+                kCTForegroundColorAttributeName as NSAttributedString.Key: theme.codeTextColor
             ])
             let typesetter = CTTypesetterCreateWithAttributedString(attributed)
             var start = 0
@@ -335,7 +414,7 @@ struct Renderer {
     func makeInlineAttributed(_ text: String) -> NSMutableAttributedString {
         let result = NSMutableAttributedString(string: text, attributes: [
             kCTFontAttributeName as NSAttributedString.Key: bodyFont,
-            kCTForegroundColorAttributeName as NSAttributedString.Key: blackColor
+            kCTForegroundColorAttributeName as NSAttributedString.Key: theme.textColor
         ])
 
         let nsText = text as NSString
@@ -347,7 +426,7 @@ struct Renderer {
             if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) {
                 let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
                 for match in matches {
-                    result.addAttribute(kCTForegroundColorAttributeName as NSAttributedString.Key, value: accentColor, range: match.range)
+                    result.addAttribute(kCTForegroundColorAttributeName as NSAttributedString.Key, value: theme.accentColor, range: match.range)
                 }
             }
         }
@@ -363,9 +442,13 @@ func printUsage(to stream: UnsafeMutablePointer<FILE>) {
     Usage:
       \(executable) input.md [output.pdf]
       \(executable) input.md -o output.pdf
+      \(executable) input.md --theme sumi
+      \(executable) --list-themes
 
     Options:
       -o, --output <path>  Write PDF to this path
+      -t, --theme <name>   Use a built-in theme. Default: \(defaultThemeName)
+      --list-themes        Show built-in themes
       -h, --help           Show this help
       --version            Show version
 
@@ -374,8 +457,16 @@ func printUsage(to stream: UnsafeMutablePointer<FILE>) {
       KUMA_BODY_FONT        Body font PostScript name. Default: \(defaultBodyFontName)
       KUMA_HEADING_FONT     Heading font PostScript name. Default: \(defaultHeadingFontName)
       KUMA_CODE_FONT        Code font PostScript name. Default: \(defaultCodeFontName)
+      KUMA_THEME            Theme name when --theme is not provided
 
     """, stream)
+}
+
+func printThemes(to stream: UnsafeMutablePointer<FILE>) {
+    fputs("Built-in themes:\n", stream)
+    for theme in themes {
+        fputs("  \(theme.name.padding(toLength: 8, withPad: " ", startingAt: 0)) \(theme.description)\n", stream)
+    }
 }
 
 func usageError(_ message: String) -> Never {
@@ -388,9 +479,10 @@ func expandedFileURL(_ path: String) -> URL {
     URL(fileURLWithPath: (path as NSString).expandingTildeInPath).standardizedFileURL
 }
 
-func parseArguments(_ rawArgs: [String]) -> (inputURL: URL, outputURL: URL) {
+func parseArguments(_ rawArgs: [String]) -> (inputURL: URL, outputURL: URL, themeName: String?) {
     var positionals: [String] = []
     var outputPath: String?
+    var themeName: String?
     var index = 0
 
     while index < rawArgs.count {
@@ -403,6 +495,9 @@ func parseArguments(_ rawArgs: [String]) -> (inputURL: URL, outputURL: URL) {
         case "--version":
             print("\(appName) \(appVersion)")
             exit(0)
+        case "--list-themes":
+            printThemes(to: stdout)
+            exit(0)
         case "-o", "--output":
             let valueIndex = index + 1
             guard valueIndex < rawArgs.count else {
@@ -411,6 +506,20 @@ func parseArguments(_ rawArgs: [String]) -> (inputURL: URL, outputURL: URL) {
             outputPath = rawArgs[valueIndex]
             index += 2
             continue
+        case "-t", "--theme":
+            let valueIndex = index + 1
+            guard valueIndex < rawArgs.count else {
+                usageError("\(arg) needs a theme name")
+            }
+            themeName = rawArgs[valueIndex]
+            index += 2
+            continue
+        case let option where option.hasPrefix("--theme="):
+            let value = String(option.dropFirst("--theme=".count))
+            guard !value.isEmpty else {
+                usageError("--theme needs a theme name")
+            }
+            themeName = value
         default:
             if arg.hasPrefix("-") {
                 usageError("unknown option \(arg)")
@@ -436,7 +545,19 @@ func parseArguments(_ rawArgs: [String]) -> (inputURL: URL, outputURL: URL) {
     let outputURL = resolvedOutputPath.map(expandedFileURL)
         ?? inputURL.deletingPathExtension().appendingPathExtension("pdf")
 
-    return (inputURL, outputURL)
+    return (inputURL, outputURL, themeName)
+}
+
+func resolveTheme(commandLineName: String?, environment: [String: String]) -> Theme {
+    let rawName = commandLineName ?? environment["KUMA_THEME"] ?? defaultThemeName
+    let normalized = rawName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    if let theme = themesByName[normalized] {
+        return theme
+    }
+
+    fputs("Error: unknown theme \(rawName)\n\n", stderr)
+    printThemes(to: stderr)
+    exit(2)
 }
 
 func registerFonts(from directoryPath: String?) {
@@ -555,13 +676,14 @@ extension String {
     }
 }
 
-let (inputURL, outputURL) = parseArguments(Array(CommandLine.arguments.dropFirst()))
+let (inputURL, outputURL, themeName) = parseArguments(Array(CommandLine.arguments.dropFirst()))
 let markdown = try String(contentsOf: inputURL, encoding: .utf8)
 let blocks = parseMarkdown(markdown)
 try FileManager.default.createDirectory(at: outputURL.deletingLastPathComponent(), withIntermediateDirectories: true)
 
 let environment = ProcessInfo.processInfo.environment
 registerFonts(from: environment["KUMA_FONT_DIR"])
+let theme = resolveTheme(commandLineName: themeName, environment: environment)
 
 let bodyFont = font(named: environment["KUMA_BODY_FONT"] ?? defaultBodyFontName, size: 11)
 let headingFont = font(named: environment["KUMA_HEADING_FONT"] ?? defaultHeadingFontName, size: 18)
@@ -581,7 +703,8 @@ var renderer = Renderer(
     inputDirectory: inputURL.deletingLastPathComponent(),
     bodyFont: bodyFont,
     headingFont: headingFont,
-    codeFont: codeFont
+    codeFont: codeFont,
+    theme: theme
 )
 
 renderer.beginPage(startY: firstPageStartY)
