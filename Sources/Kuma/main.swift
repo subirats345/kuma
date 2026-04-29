@@ -23,7 +23,7 @@ let codeTextColor = CGColor(red: 0.12, green: 0.11, blue: 0.10, alpha: 1)
 let codeBackgroundColor = CGColor(red: 0.965, green: 0.955, blue: 0.935, alpha: 1)
 let codeBorderColor = CGColor(red: 0.88, green: 0.86, blue: 0.82, alpha: 1)
 let appName = "Kuma"
-let appVersion = "0.4.0"
+let appVersion = "0.4.1"
 let defaultBodyFontName = "AvenirNext-Regular"
 let defaultHeadingFontName = "AvenirNext-DemiBold"
 let defaultCodeFontName = "Menlo-Regular"
@@ -34,6 +34,13 @@ enum Block {
     case bullet(String)
     case image(alt: String, path: String)
     case code(language: String?, text: String)
+
+    var isHeading: Bool {
+        if case .heading = self {
+            return true
+        }
+        return false
+    }
 }
 
 struct Renderer {
@@ -120,12 +127,12 @@ struct Renderer {
             y += 0
         } else if previous != nil {
             if level == 2 {
-                y += 34
+                y += 24
             } else if level == 3 {
                 if case .heading(2, _) = previous {
-                    y += 7
+                    y += 5
                 } else {
-                    y += 27
+                    y += 18
                 }
             }
         }
@@ -139,13 +146,13 @@ struct Renderer {
         switch level {
         case 1:
             size = 22
-            nextGap = 42
+            nextGap = 34
         case 2:
             size = 18
-            nextGap = 39
+            nextGap = 27
         default:
             size = 14
-            nextGap = 22
+            nextGap = 19
         }
 
         let font = CTFontCreateCopyWithAttributes(headingFont, size, nil, nil)
@@ -214,7 +221,7 @@ struct Renderer {
     }
 
     mutating func drawImage(alt: String, path: String, previous: Block?) {
-        if previous != nil {
+        if let previous, !previous.isHeading {
             y += 18
         }
 
@@ -258,7 +265,7 @@ struct Renderer {
     }
 
     mutating func drawCode(language: String?, text: String, previous: Block?) {
-        if previous != nil {
+        if let previous, !previous.isHeading {
             y += 16
         }
 
