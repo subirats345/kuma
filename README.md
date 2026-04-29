@@ -84,6 +84,23 @@ kuma watch notes.md
 kuma watch notes.md notes.pdf --open
 ```
 
+## Codex Skill
+
+Kuma ships with a reusable Codex skill at [`skills/kuma-pdf`](skills/kuma-pdf). It tells an agent how to write Kuma-friendly Markdown, render the PDF, generate a first-page PNG preview, and check spacing, images, lists, and code blocks.
+
+Install it into your local Codex skills folder:
+
+```sh
+mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
+cp -R skills/kuma-pdf "${CODEX_HOME:-$HOME/.codex}/skills/"
+```
+
+Then invoke it from Codex:
+
+```text
+Use $kuma-pdf to turn this Markdown note into a polished PDF and verify the preview.
+```
+
 ## Examples
 
 The examples are intentionally made from public-domain texts, so the repository stays easy to share.

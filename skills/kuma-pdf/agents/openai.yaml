@@ -1,0 +1,5 @@
+interface:
+  display_name: "Kuma PDF"
+  short_description: "Render calm PDFs with Kuma"
+  brand_color: "#DD4C4F"
+  default_prompt: "Use $kuma-pdf to turn this Markdown note into a polished PDF and verify the preview."

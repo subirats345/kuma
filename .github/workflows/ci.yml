@@ -44,3 +44,10 @@ jobs:
             .build/debug/kuma "$md" ".build/examples/$name.pdf"
             test -s ".build/examples/$name.pdf"
           done
+      - name: Validate Codex skill
+        run: |
+          test -s skills/kuma-pdf/SKILL.md
+          grep -q '^name: kuma-pdf$' skills/kuma-pdf/SKILL.md
+          test -x skills/kuma-pdf/scripts/render-preview.sh
+          KUMA_SKIP_PREVIEW=1 PATH="$PWD/.build/debug:$PATH" skills/kuma-pdf/scripts/render-preview.sh Examples/basic.md .build/skill/basic.pdf .build/skill
+          test -s .build/skill/basic.pdf
