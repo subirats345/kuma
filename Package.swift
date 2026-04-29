@@ -8,6 +8,8 @@ let package = Package(
         .executable(name: "kuma", targets: ["Kuma"])
     ],
     targets: [
-        .executableTarget(name: "Kuma")
+        .executableTarget(name: "Kuma", dependencies: ["KumaCore"]),
+        .target(name: "KumaCore"),
+        .testTarget(name: "KumaCoreTests", dependencies: ["KumaCore"])
     ]
 )

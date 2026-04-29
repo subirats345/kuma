@@ -150,6 +150,7 @@ Specialized extensions such as math, Mermaid diagrams, and raw HTML are intentio
 
 ```sh
 swift build
+swift test
 swift run kuma Examples/basic.md .build/kuma-example.pdf
 swift run kuma init .build/kuma-example.md
 swift run kuma watch .build/kuma-example.md .build/kuma-example.pdf
@@ -158,3 +159,11 @@ swift build -c release
 ```
 
 Kuma is dependency-free. The only requirement is macOS with SwiftPM.
+
+Source layout:
+
+- `Sources/Kuma/` keeps the executable entrypoint tiny.
+- `Sources/KumaCore/MarkdownParser.swift` turns Markdown into document blocks.
+- `Sources/KumaCore/InlineParser.swift` handles inline emphasis, links, code, and escapes.
+- `Sources/KumaCore/PDFRenderer.swift` draws the native PDF.
+- `Tests/KumaCoreTests/` protects the parser surface.
