@@ -48,6 +48,8 @@ install -m 755 .build/release/kuma ~/.local/bin/kuma
 ## Usage
 
 ```sh
+kuma
+kuma interactive
 kuma input.md
 kuma input.md output.pdf
 kuma input.md -o output.pdf
@@ -60,6 +62,12 @@ The short alias is installed as `ku`:
 
 ```sh
 ku Examples/basic.md
+```
+
+Run Kuma without arguments for a small interactive flow. It lists Markdown files in the current folder, lets you choose an input, suggests the output PDF path, and asks whether to open or watch the result:
+
+```sh
+kuma
 ```
 
 Create a starter Markdown file:

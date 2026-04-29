@@ -20,6 +20,13 @@ jobs:
           .build/debug/kuma init .build/cli/starter.md
           .build/debug/kuma .build/cli/starter.md .build/cli/starter.pdf
           test -s .build/cli/starter.pdf
+          mkdir -p .build/interactive
+          cp Examples/basic.md .build/interactive/basic.md
+          (
+            cd .build/interactive
+            printf '1\n\nn\nn\n' | ../../.build/debug/kuma
+            test -s basic.pdf
+          )
           .build/debug/kuma watch .build/cli/starter.md .build/cli/watch.pdf > .build/cli/watch.log 2>&1 &
           pid=$!
           sleep 2

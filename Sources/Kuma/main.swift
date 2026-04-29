@@ -23,7 +23,7 @@ let codeTextColor = CGColor(red: 0.12, green: 0.11, blue: 0.10, alpha: 1)
 let codeBackgroundColor = CGColor(red: 0.965, green: 0.955, blue: 0.935, alpha: 1)
 let codeBorderColor = CGColor(red: 0.88, green: 0.86, blue: 0.82, alpha: 1)
 let appName = "Kuma"
-let appVersion = "0.5.0"
+let appVersion = "0.6.0"
 let defaultBodyFontName = "AvenirNext-Regular"
 let defaultHeadingFontName = "AvenirNext-DemiBold"
 let defaultCodeFontName = "Menlo-Regular"
@@ -38,6 +38,7 @@ enum Command {
     case render(RenderOptions)
     case watch(RenderOptions)
     case initialize(URL)
+    case interactive
 }
 
 enum KumaError: Error, CustomStringConvertible {
@@ -52,6 +53,7 @@ enum KumaError: Error, CustomStringConvertible {
     case cannotOpen(URL, Int32)
     case initFileExists(URL)
     case cannotWriteInitFile(URL, Error)
+    case interactiveCancelled
 
     var description: String {
         switch self {
@@ -77,6 +79,8 @@ enum KumaError: Error, CustomStringConvertible {
             return "refusing to overwrite existing file: \(url.path)"
         case .cannotWriteInitFile(let url, let error):
             return "could not write \(url.path): \(error.localizedDescription)"
+        case .interactiveCancelled:
+            return "interactive session cancelled"
         }
     }
 }
@@ -429,6 +433,8 @@ func printUsage(to stream: UnsafeMutablePointer<FILE>) {
     \(appName) \(appVersion)
 
     Usage:
+      \(executable)
+      \(executable) interactive
       \(executable) input.md [output.pdf]
       \(executable) input.md -o output.pdf
       \(executable) input.md --open
@@ -442,6 +448,7 @@ func printUsage(to stream: UnsafeMutablePointer<FILE>) {
       --version            Show version
 
     Commands:
+      interactive          Pick input, output, open, and watch with prompts
       watch                Re-render when the input Markdown changes
       init                 Create a small starter Markdown file
 
@@ -460,7 +467,7 @@ func expandedFileURL(_ path: String) -> URL {
 
 func parseArguments(_ rawArgs: [String]) -> Command {
     guard let first = rawArgs.first else {
-        usageError("missing input Markdown file")
+        return .interactive
     }
 
     switch first {
@@ -470,6 +477,8 @@ func parseArguments(_ rawArgs: [String]) -> Command {
     case "--version":
         print("\(appName) \(appVersion)")
         exit(0)
+    case "interactive":
+        return .interactive
     case "watch":
         return .watch(parseRenderArguments(Array(rawArgs.dropFirst())))
     case "init":
@@ -696,6 +705,106 @@ func initializeMarkdown(at url: URL) throws {
     print(url.path)
 }
 
+func currentDirectoryURL() -> URL {
+    URL(fileURLWithPath: FileManager.default.currentDirectoryPath).standardizedFileURL
+}
+
+func markdownFiles(in directoryURL: URL) -> [URL] {
+    guard let files = try? FileManager.default.contentsOfDirectory(
+        at: directoryURL,
+        includingPropertiesForKeys: [.isRegularFileKey],
+        options: [.skipsHiddenFiles]
+    ) else {
+        return []
+    }
+
+    return files
+        .filter { ["md", "markdown"].contains($0.pathExtension.lowercased()) }
+        .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+}
+
+func prompt(_ message: String) throws -> String {
+    print(message, terminator: "")
+    fflush(stdout)
+    guard let line = readLine() else {
+        throw KumaError.interactiveCancelled
+    }
+    return line.trimmingCharacters(in: .whitespacesAndNewlines)
+}
+
+func promptYesNo(_ message: String, defaultValue: Bool) throws -> Bool {
+    let suffix = defaultValue ? " [Y/n]: " : " [y/N]: "
+    while true {
+        let answer = try prompt(message + suffix).lowercased()
+        if answer.isEmpty {
+            return defaultValue
+        }
+        if ["y", "yes"].contains(answer) {
+            return true
+        }
+        if ["n", "no"].contains(answer) {
+            return false
+        }
+        print("Please answer yes or no.")
+    }
+}
+
+func promptInputURL() throws -> URL {
+    let files = markdownFiles(in: currentDirectoryURL())
+
+    if !files.isEmpty {
+        print("Markdown files:")
+        for (index, fileURL) in files.enumerated() {
+            print("  \(index + 1). \(fileURL.lastPathComponent)")
+        }
+        print("")
+    }
+
+    while true {
+        let answer = try prompt("Markdown file or number: ")
+        if answer.isEmpty {
+            if files.count == 1 {
+                return files[0]
+            }
+            print("Please enter a Markdown path or choose a number.")
+            continue
+        }
+
+        if let selection = Int(answer), selection >= 1, selection <= files.count {
+            return files[selection - 1]
+        }
+
+        return expandedFileURL(answer)
+    }
+}
+
+func promptOutputURL(for inputURL: URL) throws -> URL {
+    let defaultURL = inputURL.deletingPathExtension().appendingPathExtension("pdf")
+    let answer = try prompt("Output PDF [\(defaultURL.path)]: ")
+    if answer.isEmpty {
+        return defaultURL
+    }
+    return expandedFileURL(answer)
+}
+
+func interactiveCommand() throws -> Command {
+    print("\(appName) \(appVersion)")
+    print("Interactive PDF render")
+    print("")
+
+    let inputURL = try promptInputURL()
+    let outputURL = try promptOutputURL(for: inputURL)
+    let openAfterRender = try promptYesNo("Open after render?", defaultValue: true)
+    let useWatch = try promptYesNo("Watch for changes?", defaultValue: false)
+    let options = RenderOptions(inputURL: inputURL, outputURL: outputURL, openAfterRender: openAfterRender)
+
+    print("")
+    if useWatch {
+        return .watch(options)
+    }
+    return .render(options)
+}
+
 func parseMarkdown(_ markdown: String) -> [Block] {
     var blocks: [Block] = []
     var paragraph: [String] = []
@@ -852,7 +961,15 @@ func describe(_ error: Error) -> String {
 
 do {
     let command = parseArguments(Array(CommandLine.arguments.dropFirst()))
+    let resolvedCommand: Command
     switch command {
+    case .interactive:
+        resolvedCommand = try interactiveCommand()
+    default:
+        resolvedCommand = command
+    }
+
+    switch resolvedCommand {
     case .render(let options):
         let outputURL = try render(options)
         print(outputURL.path)
@@ -860,6 +977,8 @@ do {
         watch(options)
     case .initialize(let url):
         try initializeMarkdown(at: url)
+    case .interactive:
+        throw KumaError.interactiveCancelled
     }
 } catch {
     fputs("Error: \(describe(error))\n", stderr)
