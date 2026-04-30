@@ -14,7 +14,9 @@ final class InlineParserTests: XCTestCase {
         XCTAssertTrue(both.style.italic)
 
         XCTAssertTrue(try XCTUnwrap(runs.first { $0.text == "code" }).style.code)
-        XCTAssertTrue(try XCTUnwrap(runs.first { $0.text == "link" }).style.link)
+        let link = try XCTUnwrap(runs.first { $0.text == "link" })
+        XCTAssertTrue(link.style.link)
+        XCTAssertEqual(link.style.linkDestination, "https://example.com")
         XCTAssertTrue(try XCTUnwrap(runs.first { $0.text == "gone" }).style.strikethrough)
     }
 
@@ -23,5 +25,6 @@ final class InlineParserTests: XCTestCase {
 
         XCTAssertEqual(runs.map(\.text).joined(), "Visit https://example.com or hello@example.com")
         XCTAssertEqual(runs.filter(\.style.link).map(\.text), ["https://example.com", "hello@example.com"])
+        XCTAssertEqual(runs.filter(\.style.link).map(\.style.linkDestination), ["https://example.com", "mailto:hello@example.com"])
     }
 }

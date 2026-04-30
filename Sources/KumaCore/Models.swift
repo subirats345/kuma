@@ -78,6 +78,7 @@ struct InlineStyle: Equatable {
     var italic = false
     var code = false
     var link = false
+    var linkDestination: String?
     var strikethrough = false
 }
 

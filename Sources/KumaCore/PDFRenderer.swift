@@ -38,6 +38,7 @@ struct Renderer {
         context.textPosition = CGPoint(x: x, y: pageHeight - baselineY)
         CTLineDraw(line, context)
         drawStrikethroughs(line, x: x, baselineY: baselineY)
+        drawLinkAnnotations(line, x: x, baselineY: baselineY)
     }
 
     func drawStrikethroughs(_ line: CTLine, x: CGFloat, baselineY: CGFloat) {
@@ -69,6 +70,34 @@ struct Renderer {
         }
 
         context.restoreGState()
+    }
+
+    func drawLinkAnnotations(_ line: CTLine, x: CGFloat, baselineY: CGFloat) {
+        let runs = CTLineGetGlyphRuns(line) as NSArray
+        let baseline = pageHeight - baselineY
+
+        for case let run as CTRun in runs {
+            let attributes = CTRunGetAttributes(run) as NSDictionary
+            guard let destination = attributes[kumaLinkAttribute] as? String,
+                  let url = URL(string: destination) else {
+                continue
+            }
+
+            let range = CTRunGetStringRange(run)
+            let runX = x + CTLineGetOffsetForStringIndex(line, range.location, nil)
+            var ascent: CGFloat = 0
+            var descent: CGFloat = 0
+            let width = CGFloat(CTRunGetTypographicBounds(run, CFRange(location: 0, length: 0), &ascent, &descent, nil))
+            guard width > 0 else { continue }
+
+            let rect = CGRect(
+                x: runX,
+                y: baseline - descent - 1,
+                width: width,
+                height: ascent + descent + 2
+            )
+            context.setURL(url as CFURL, for: rect)
+        }
     }
 
     func fillRect(x: CGFloat, topY: CGFloat, width: CGFloat, height: CGFloat, color: CGColor) {
@@ -600,11 +629,28 @@ struct Renderer {
             if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) {
                 let matches = regex.matches(in: result.string, range: NSRange(location: 0, length: nsText.length))
                 for match in matches {
-                    result.addAttribute(kCTForegroundColorAttributeName as NSAttributedString.Key, value: accentColor, range: match.range)
+                    let linkRange = trimmedLinkRange(match.range, in: nsText)
+                    guard linkRange.length > 0 else { continue }
+                    result.addAttribute(kCTForegroundColorAttributeName as NSAttributedString.Key, value: accentColor, range: linkRange)
+                    let destination = nsText.substring(with: linkRange)
+                    result.addAttribute(kumaLinkAttribute, value: normalizedLinkDestination(destination), range: linkRange)
                 }
             }
         }
         return result
+    }
+
+    func trimmedLinkRange(_ range: NSRange, in text: NSString) -> NSRange {
+        var length = range.length
+        let trailingPunctuation = CharacterSet(charactersIn: ".,;:!?)")
+        while length > 0 {
+            let character = text.substring(with: NSRange(location: range.location + length - 1, length: 1))
+            if character.rangeOfCharacter(from: trailingPunctuation) == nil {
+                break
+            }
+            length -= 1
+        }
+        return NSRange(location: range.location, length: length)
     }
 
     func inlineAttributes(for style: InlineStyle, baseColor: CGColor, baseFont: CTFont) -> [NSAttributedString.Key: Any] {
@@ -626,6 +672,10 @@ struct Renderer {
             kCTFontAttributeName as NSAttributedString.Key: selectedFont,
             kCTForegroundColorAttributeName as NSAttributedString.Key: style.link ? accentColor : (style.code ? codeTextColor : baseColor)
         ]
+
+        if let linkDestination = style.linkDestination {
+            attributes[kumaLinkAttribute] = linkDestination
+        }
 
         if style.strikethrough {
             attributes[kumaStrikethroughAttribute] = true

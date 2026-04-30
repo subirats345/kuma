@@ -27,7 +27,7 @@ skills/kuma-pdf/scripts/render-preview.sh input.md output.pdf .build/previews
 Prefer:
 
 - `#` through `######` headings
-- short paragraphs with bold, italic, inline code, links, raw URLs, and emails
+- short paragraphs with bold, italic, inline code, clickable PDF links, raw URLs, and emails
 - blockquotes
 - unordered, ordered, nested, and task lists
 - simple pipe tables

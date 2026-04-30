@@ -52,6 +52,7 @@ func parseInlineRuns(_ text: String, style: InlineStyle = InlineStyle()) -> [Inl
                 flushLiteral()
                 var linkStyle = style
                 linkStyle.link = true
+                linkStyle.linkDestination = normalizedLinkDestination(String(text[destinationStart..<closeParen.lowerBound]))
                 runs.append(contentsOf: parseInlineRuns(String(text[next..<closeBracket.lowerBound]), style: linkStyle))
                 index = closeParen.upperBound
                 continue
@@ -64,6 +65,7 @@ func parseInlineRuns(_ text: String, style: InlineStyle = InlineStyle()) -> [Inl
                 flushLiteral()
                 var linkStyle = style
                 linkStyle.link = true
+                linkStyle.linkDestination = normalizedLinkDestination(content)
                 runs.append(InlineRun(text: content, style: linkStyle))
                 index = close.upperBound
                 continue
@@ -164,4 +166,12 @@ func parseInlineRuns(_ text: String, style: InlineStyle = InlineStyle()) -> [Inl
 
 func isAutolink(_ text: String) -> Bool {
     text.range(of: #"^(https?://[^\s]+|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})$"#, options: [.regularExpression, .caseInsensitive]) != nil
+}
+
+func normalizedLinkDestination(_ destination: String) -> String {
+    let trimmed = destination.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.range(of: #"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$"#, options: [.regularExpression, .caseInsensitive]) != nil {
+        return "mailto:\(trimmed)"
+    }
+    return trimmed
 }

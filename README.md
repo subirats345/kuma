@@ -135,7 +135,7 @@ Kuma currently supports the practical Markdown subset needed for calm documents:
 
 - `#` through `######` headings
 - paragraphs
-- bold, italic, inline code, links, raw URLs, and emails
+- bold, italic, inline code, clickable PDF links, raw URLs, and emails
 - blockquotes
 - unordered, ordered, nested, and task lists
 - simple tables
