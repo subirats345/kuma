@@ -303,11 +303,11 @@ struct Renderer {
     }
 
     func listTextX(level: Int) -> CGFloat {
-        bulletTextX + (CGFloat(max(0, level)) * 18)
+        bulletTextX + (CGFloat(max(0, level)) * listLevelIndent)
     }
 
     func listMarkerX(level: Int) -> CGFloat {
-        bulletDotX + (CGFloat(max(0, level)) * 18)
+        bulletDotX + (CGFloat(max(0, level)) * listLevelIndent)
     }
 
     func listWidth(level: Int) -> CGFloat {
@@ -343,14 +343,14 @@ struct Renderer {
         ])
         let line = CTLineCreateWithAttributedString(attributed)
         let markerWidth = CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
-        drawLine(line, x: listTextX(level: level) - markerWidth - 8, baselineY: baselineY)
+        drawLine(line, x: listTextX(level: level) - markerWidth - 5, baselineY: baselineY)
     }
 
     func drawTaskMarker(checked: Bool, level: Int, baselineY: CGFloat) {
         let size: CGFloat = 7
         let centerY = baselineY - (CTFontGetCapHeight(bodyFont) / 2)
         let rect = CGRect(
-            x: listTextX(level: level) - 18,
+            x: listMarkerX(level: level) - (size / 2),
             y: pageHeight - centerY - (size / 2),
             width: size,
             height: size
@@ -457,10 +457,10 @@ struct Renderer {
         }
 
         let attr = makeInlineAttributed(text, baseColor: captionColor)
-        let quoteX = leftX + 15
-        let quoteWidth = bodyWidth - 18
+        let quoteX = leftX + 13
+        let quoteWidth = bodyWidth - (quoteX - leftX)
         let lineCount = measuredLineCount(attr, width: quoteWidth)
-        let quoteHeight = CGFloat(lineCount) * bodyLineHeight + 4
+        let quoteHeight = max(bodyLineHeight, CGFloat(lineCount - 1) * bodyLineHeight + 18)
 
         if y + quoteHeight > maxBaselineY {
             newPage()
@@ -469,8 +469,8 @@ struct Renderer {
         context.saveGState()
         context.setStrokeColor(accentColor)
         context.setLineWidth(1.4)
-        let lineX = leftX + 3
-        let topY = y - 4
+        let lineX = leftX + 4
+        let topY = y - 13
         context.move(to: CGPoint(x: lineX, y: pageHeight - topY))
         context.addLine(to: CGPoint(x: lineX, y: pageHeight - (topY + quoteHeight)))
         context.strokePath()
