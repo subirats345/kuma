@@ -229,28 +229,34 @@ struct Renderer {
             newPage()
         }
 
-        let size: CGFloat
-        let nextGap: CGFloat
-        switch level {
-        case 1:
-            size = 22
-            nextGap = 34
-        case 2:
-            size = 18
-            nextGap = 27
-        default:
-            size = 14
-            nextGap = 19
+        let layout = headingLayout(level: level)
+        let attr = makeHeadingAttributed(text, level: level)
+        let lineCount = measuredLineCount(attr, width: headingWidth)
+        if y + (CGFloat(lineCount) * layout.lineHeight) > maxBaselineY {
+            newPage()
         }
 
-        let font = CTFontCreateCopyWithAttributes(headingFont, size, nil, nil)
-        let attr = NSAttributedString(string: text, attributes: [
-            kCTFontAttributeName as NSAttributedString.Key: font,
+        drawWrapped(attr, x: headingX, width: headingWidth, lineHeight: layout.lineHeight)
+        y += layout.bottomGap
+    }
+
+    func makeHeadingAttributed(_ text: String, level: Int) -> NSAttributedString {
+        let layout = headingLayout(level: level)
+        return NSAttributedString(string: text, attributes: [
+            kCTFontAttributeName as NSAttributedString.Key: layout.font,
             kCTForegroundColorAttributeName as NSAttributedString.Key: blackColor
         ])
-        let line = CTLineCreateWithAttributedString(attr)
-        drawLine(line, x: headingX, baselineY: y)
-        y += nextGap
+    }
+
+    func headingLayout(level: Int) -> (font: CTFont, lineHeight: CGFloat, bottomGap: CGFloat) {
+        switch level {
+        case 1:
+            return (CTFontCreateCopyWithAttributes(headingFont, 22, nil, nil), 28, 6)
+        case 2:
+            return (CTFontCreateCopyWithAttributes(headingFont, 18, nil, nil), 22, 5)
+        default:
+            return (CTFontCreateCopyWithAttributes(headingFont, 14, nil, nil), 17, 2)
+        }
     }
 
     mutating func drawParagraph(_ text: String, previous: Block?) {
