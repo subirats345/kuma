@@ -251,11 +251,11 @@ struct Renderer {
     func headingLayout(level: Int) -> (font: CTFont, lineHeight: CGFloat, bottomGap: CGFloat) {
         switch level {
         case 1:
-            return (CTFontCreateCopyWithAttributes(headingFont, 22, nil, nil), 28, 6)
+            return (CTFontCreateCopyWithAttributes(headingFont, 22, nil, nil), 28, 9)
         case 2:
-            return (CTFontCreateCopyWithAttributes(headingFont, 18, nil, nil), 22, 5)
+            return (CTFontCreateCopyWithAttributes(headingFont, 18, nil, nil), 22, 9)
         default:
-            return (CTFontCreateCopyWithAttributes(headingFont, 14, nil, nil), 17, 2)
+            return (CTFontCreateCopyWithAttributes(headingFont, 14, nil, nil), 17, 5)
         }
     }
 
@@ -266,7 +266,7 @@ struct Renderer {
 
     mutating func drawListItem(marker: ListMarker, level: Int, text: String, previous: Block?) {
         if case .paragraph = previous {
-            y += 20
+            y += 8
         } else if let previous, !previous.isListItem && !previous.isHeading {
             y += 8
         }

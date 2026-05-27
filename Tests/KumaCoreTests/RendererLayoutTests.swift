@@ -32,6 +32,29 @@ final class RendererLayoutTests: XCTestCase {
         }
     }
 
+    func testHeadingsLeaveReadableSpaceBeforeFollowingContent() throws {
+        var renderer = try makeRenderer()
+        renderer.beginPage(startY: firstPageStartY)
+        let startY = renderer.y
+
+        renderer.drawHeading(level: 2, text: "Development AI", previous: nil)
+        renderer.endPage()
+
+        XCTAssertEqual(renderer.y - startY, 31, accuracy: 0.01)
+    }
+
+    func testListAfterParagraphUsesCompactEditorialGap() throws {
+        var renderer = try makeRenderer()
+        renderer.beginPage(startY: firstPageStartY)
+
+        renderer.drawParagraph("Initial ideas:", previous: nil)
+        let afterParagraphY = renderer.y
+        renderer.drawListItem(marker: .unordered, level: 0, text: "PR description generation.", previous: .paragraph("Initial ideas:"))
+        renderer.endPage()
+
+        XCTAssertEqual(renderer.y - afterParagraphY, 28, accuracy: 0.01)
+    }
+
     private func makeRenderer() throws -> Renderer {
         let data = NSMutableData()
         guard let consumer = CGDataConsumer(data: data as CFMutableData) else {
